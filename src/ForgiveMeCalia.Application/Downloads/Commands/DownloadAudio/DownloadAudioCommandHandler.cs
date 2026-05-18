@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using ForgiveMeCalia.Application.Abstractions;
 using ForgiveMeCalia.Application.Options;
 using ForgiveMeCalia.Application.Downloads;
+using ForgiveMeCalia.Application.Localization;
 using ForgiveMeCalia.Application.Services;
 using ForgiveMeCalia.Domain.Entities;
 using ForgiveMeCalia.Domain.Enums;
@@ -23,7 +24,7 @@ public sealed class DownloadAudioCommandHandler(
     {
         if (request.Scope.HasFlag(DownloadScope.Paid))
         {
-            progress.ReportPhase("Проверка Patreon-сессии (cookies)...");
+            progress.ReportPhase(AppText.T("download.checkCookies"));
             await cookieSession.EnsureSessionAsync(tryImportIfMissing: true, cancellationToken);
         }
 
@@ -35,7 +36,7 @@ public sealed class DownloadAudioCommandHandler(
         var alreadyOnDisk = posts.Count - plan.Count - locked;
 
         progress.ReportPhase(
-            $"К загрузке: {plan.Count} файлов (уже на диске: {alreadyOnDisk}, заблокировано: {locked}).");
+            AppText.T("download.queue", plan.Count, alreadyOnDisk, locked));
 
         var downloaded = 0;
         var skipped = posts.Count - plan.Count - locked;
@@ -43,7 +44,7 @@ public sealed class DownloadAudioCommandHandler(
         var folderTags = new ConcurrentDictionary<string, ConcurrentDictionary<string, byte>>(StringComparer.OrdinalIgnoreCase);
 
         if (plan.Count > 0)
-            progress.ReportPhase($"Загрузка {plan.Count} файлов (параллельно: {options.Value.MaxParallelDownloads})...");
+            progress.ReportPhase(AppText.T("download.downloading", plan.Count, options.Value.MaxParallelDownloads));
 
         var parallelOptions = new ParallelOptions
         {
@@ -63,7 +64,7 @@ public sealed class DownloadAudioCommandHandler(
                 if (File.Exists(destinationPath))
                 {
                     await indexStore.MarkCompletedAsync(item.Post.Mp3Url!, token);
-                    progress.ReportSkipped("файл уже существует", item.Post.Title);
+                    progress.ReportSkipped(AppText.T("download.fileExists"), item.Post.Title);
                     Interlocked.Increment(ref skipped);
                     return;
                 }
@@ -86,7 +87,7 @@ public sealed class DownloadAudioCommandHandler(
             {
                 var failure = new DownloadFailure(item.Post.Title, DownloadExceptionFormatter.Format(ex));
                 failures.Add(failure);
-                progress.ReportError($"Не удалось скачать «{item.Post.Title}»", ex);
+                progress.ReportError(AppText.T("download.failed", item.Post.Title), ex);
             }
         });
 
@@ -109,8 +110,8 @@ public sealed class DownloadAudioCommandHandler(
         foreach (var tier in tiers)
         {
             progress.ReportPhase(tier == AudioTier.Free
-                ? "Сканирование бесплатных записей..."
-                : "Сканирование платных записей...");
+                ? AppText.T("download.scanningFree")
+                : AppText.T("download.scanningPaid"));
 
             var urls = await catalog.GetPostUrlsAsync(tier, cancellationToken);
             var index = 0;
@@ -126,7 +127,7 @@ public sealed class DownloadAudioCommandHandler(
                 catch (Exception ex)
                 {
                     progress.ReportWarning(
-                        $"Не удалось прочитать ({index}/{urls.Count}): {DownloadExceptionFormatter.Format(ex)}");
+                        AppText.T("download.readFailed", index, urls.Count, DownloadExceptionFormatter.Format(ex)));
                 }
 
                 if (options.Value.CatalogRequestDelayMs > 0 && index < urls.Count)

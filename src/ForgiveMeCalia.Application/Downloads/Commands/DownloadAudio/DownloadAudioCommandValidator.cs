@@ -1,4 +1,5 @@
 using FluentValidation;
+using ForgiveMeCalia.Application.Localization;
 using ForgiveMeCalia.Domain.Enums;
 
 namespace ForgiveMeCalia.Application.Downloads.Commands.DownloadAudio;
@@ -9,6 +10,6 @@ public sealed class DownloadAudioCommandValidator : AbstractValidator<DownloadAu
     {
         RuleFor(x => x.Scope)
             .Must(scope => scope is DownloadScope.Free or DownloadScope.Paid or DownloadScope.All)
-            .WithMessage("Укажите --free, --paid или --all.");
+            .WithMessage(AppText.T("download.validatorScope"));
     }
 }

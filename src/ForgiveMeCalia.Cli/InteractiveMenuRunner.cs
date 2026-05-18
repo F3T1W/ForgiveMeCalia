@@ -1,3 +1,4 @@
+using ForgiveMeCalia.Application.Localization;
 using ForgiveMeCalia.Domain.Enums;
 using Spectre.Console;
 
@@ -10,8 +11,8 @@ internal enum MenuChoice
     DownloadAll,
     ShowPaths,
     ImportCookies,
-    LoginHelp,
     ConfigureParallel,
+    ChangeLanguage,
     Exit
 }
 
@@ -24,14 +25,14 @@ internal static class InteractiveMenuRunner
         AnsiConsole.Write(
             new FigletText("ForgiveMeCalia")
                 .Color(Color.MediumPurple1));
-        AnsiConsole.MarkupLine("[grey]Загрузчик аудио mistresscalia.com[/]");
+        AnsiConsole.MarkupLine($"[grey]{Markup.Escape(AppText.T("app.subtitle"))}[/]");
         AnsiConsole.WriteLine();
 
         while (true)
         {
             var choice = AnsiConsole.Prompt(
                 new SelectionPrompt<MenuChoice>()
-                    .Title("[cyan]Выберите действие:[/]")
+                    .Title($"[cyan]{Markup.Escape(AppText.T("menu.title"))}[/]")
                     .PageSize(10)
                     .AddChoices(Enum.GetValues<MenuChoice>())
                     .UseConverter(DescribeChoice));
@@ -55,32 +56,32 @@ internal static class InteractiveMenuRunner
                 case MenuChoice.ImportCookies:
                     await RunCookieImportAsync();
                     break;
-                case MenuChoice.LoginHelp:
-                    AppActions.ShowLoginHelp();
-                    break;
                 case MenuChoice.ConfigureParallel:
                     parallelCount = AnsiConsole.Prompt(
-                        new TextPrompt<int>("[cyan]Параллельных загрузок[/] [grey](1–16)[/]")
+                        new TextPrompt<int>($"[cyan]{Markup.Escape(AppText.T("menu.parallelPrompt"))}[/] [grey](1-16)[/]")
                             .DefaultValue(parallelCount)
                             .Validate(n => n is >= 1 and <= 16
                                 ? ValidationResult.Success()
-                                : ValidationResult.Error("Введите число от 1 до 16.")));
-                    AnsiConsole.MarkupLine($"[green]Установлено:[/] {parallelCount}");
+                                : ValidationResult.Error(AppText.T("menu.parallelError"))));
+                    AnsiConsole.MarkupLine($"[green]{Markup.Escape(AppText.T("menu.set", parallelCount))}[/]");
+                    break;
+                case MenuChoice.ChangeLanguage:
+                    ChangeLanguage();
                     break;
                 case MenuChoice.Exit:
-                    AnsiConsole.MarkupLine("[grey]До встречи.[/]");
+                    AnsiConsole.MarkupLine($"[grey]{Markup.Escape(AppText.T("menu.goodbye"))}[/]");
                     return;
             }
 
             AnsiConsole.WriteLine();
-            if (!AnsiConsole.Confirm("[cyan]Вернуться в меню?[/]", true))
+            if (!AnsiConsole.Confirm($"[cyan]{Markup.Escape(AppText.T("menu.return"))}[/]", true))
             {
-                AnsiConsole.MarkupLine("[grey]До встречи.[/]");
+                AnsiConsole.MarkupLine($"[grey]{Markup.Escape(AppText.T("menu.goodbye"))}[/]");
                 return;
             }
 
             AnsiConsole.Clear();
-            AnsiConsole.MarkupLine("[bold]ForgiveMeCalia[/] [grey]— главное меню[/]");
+            AnsiConsole.MarkupLine($"[bold]ForgiveMeCalia[/] [grey]- {Markup.Escape(AppText.T("menu.main"))}[/]");
             AnsiConsole.WriteLine();
         }
     }
@@ -88,7 +89,7 @@ internal static class InteractiveMenuRunner
     private static async Task RunCookieImportAsync()
     {
         var pickBrowser = AnsiConsole.Confirm(
-            "[cyan]Указать браузер вручную?[/] [grey](иначе перебор safari → chrome → firefox)[/]",
+            $"[cyan]{Markup.Escape(AppText.T("menu.browserManual"))}[/] [grey]({Markup.Escape(AppText.T("menu.browserAutoHint"))})[/]",
             false);
 
         if (!pickBrowser)
@@ -97,24 +98,37 @@ internal static class InteractiveMenuRunner
             return;
         }
 
+        var browsers = AppActions.GetSupportedBrowsers();
         var browser = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
-                .Title("[cyan]Браузер[/]")
-                .AddChoices("safari", "chrome", "chromium", "brave", "firefox", "edge"));
+                .Title($"[cyan]{Markup.Escape(AppText.T("menu.browser"))}[/]")
+                .AddChoices(browsers));
 
         await AppActions.ImportCookiesAsync(browser);
     }
 
+    private static void ChangeLanguage()
+    {
+        var selected = AnsiConsole.Prompt(
+            new SelectionPrompt<AppLanguage>()
+                .Title($"[cyan]{Markup.Escape(AppText.T("menu.language"))}[/]")
+                .AddChoices(AppText.SupportedLanguages)
+                .UseConverter(AppText.LanguageName));
+
+        AppText.CurrentLanguage = selected;
+        AnsiConsole.MarkupLine($"[green]{Markup.Escape(AppText.T("menu.languageSet", AppText.LanguageName(selected)))}[/]");
+    }
+
     private static string DescribeChoice(MenuChoice choice) => choice switch
     {
-        MenuChoice.DownloadFree => "Скачать бесплатные файлы",
-        MenuChoice.DownloadPaid => "Скачать платные файлы (нужны cookies)",
-        MenuChoice.DownloadAll => "Скачать всё (бесплатные + платные)",
-        MenuChoice.ShowPaths => "Показать пути (Музыка и cookies)",
-        MenuChoice.ImportCookies => "Импорт cookies из браузера (yt-dlp + brew)",
-        MenuChoice.LoginHelp => "Справка: вход Patreon и права macOS",
-        MenuChoice.ConfigureParallel => "Настроить параллельность загрузок",
-        MenuChoice.Exit => "Выход",
+        MenuChoice.DownloadFree => AppText.T("menu.downloadFree"),
+        MenuChoice.DownloadPaid => AppText.T("menu.downloadPaid"),
+        MenuChoice.DownloadAll => AppText.T("menu.downloadAll"),
+        MenuChoice.ShowPaths => AppText.T("menu.showPaths"),
+        MenuChoice.ImportCookies => AppText.T("menu.importCookies"),
+        MenuChoice.ConfigureParallel => AppText.T("menu.configureParallel"),
+        MenuChoice.ChangeLanguage => AppText.T("menu.changeLanguage"),
+        MenuChoice.Exit => AppText.T("menu.exit"),
         _ => choice.ToString()
     };
 }

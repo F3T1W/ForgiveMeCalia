@@ -1,5 +1,6 @@
 using System.Net;
 using ForgiveMeCalia.Application.Abstractions;
+using ForgiveMeCalia.Application.Localization;
 using ForgiveMeCalia.Application.Options;
 using ForgiveMeCalia.Infrastructure.Http;
 using Microsoft.Extensions.Options;
@@ -20,25 +21,19 @@ public sealed class CookieSessionService(
         {
             var export = await cookieExporter.ExportAsync(cancellationToken: cancellationToken);
             if (!export.Success)
-                throw new InvalidOperationException(export.ErrorMessage ?? "Не удалось импортировать cookies.");
+                throw new InvalidOperationException(export.ErrorMessage ?? AppText.T("cookies.importFailed"));
         }
 
         if (!File.Exists(cookiePath))
         {
-            throw new InvalidOperationException(
-                $"""
-                Файл cookies не найден: {cookiePath}
-
-                В меню выберите «Импорт cookies из браузера» или выполните:
-                  dotnet run --project src/ForgiveMeCalia.Cli -- cookies import
-                """);
+            throw new InvalidOperationException(AppText.T("cookies.fileMissing", cookiePath));
         }
 
         var cookies = NetscapeCookieReader.Read(cookiePath);
         if (cookies.Count == 0)
         {
             throw new InvalidOperationException(
-                $"Файл cookies пуст: {cookiePath}{Environment.NewLine}Повторите импорт из браузера.");
+                AppText.T("cookies.fileEmpty", cookiePath));
         }
 
         var siteUri = new Uri(options.Value.BaseUrl);

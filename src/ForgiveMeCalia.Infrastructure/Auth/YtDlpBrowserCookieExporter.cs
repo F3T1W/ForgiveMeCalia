@@ -1,4 +1,5 @@
 using ForgiveMeCalia.Application.Abstractions;
+using ForgiveMeCalia.Application.Localization;
 using ForgiveMeCalia.Application.Options;
 using ForgiveMeCalia.Infrastructure.Platform;
 using Microsoft.Extensions.Options;
@@ -10,15 +11,20 @@ public sealed class YtDlpBrowserCookieExporter(
     IOptions<DownloaderOptions> options) : IBrowserCookieExporter
 {
     /// <summary>
-    /// yt-dlp требует URL с известным экстрактором, чтобы запустить экспорт cookies из браузера.
-    /// Сам URL не важен — в файл попадают все cookies браузера, затем оставляем только нужный домен.
+    /// yt-dlp needs a URL handled by a known extractor before it exports browser cookies.
+    /// The URL itself is irrelevant: yt-dlp exports all browser cookies, then we keep only the target domain.
     /// </summary>
     private const string CookieExportProbeUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 
-    private static readonly string[] DefaultBrowsers =
+    private static readonly string[] MacBrowsers =
         ["safari", "chrome", "chromium", "brave", "firefox", "edge"];
 
-    public IReadOnlyList<string> GetSupportedBrowsers() => DefaultBrowsers;
+    private static readonly string[] DesktopBrowsers =
+        ["chrome", "chromium", "brave", "firefox", "edge"];
+
+    public IReadOnlyList<string> GetSupportedBrowsers() => OperatingSystem.IsMacOS()
+        ? MacBrowsers
+        : DesktopBrowsers;
 
     public async Task<CookieExportResult> ExportAsync(
         string? browser = null,
@@ -32,16 +38,12 @@ public sealed class YtDlpBrowserCookieExporter(
         {
             return CookieExportResult.Fail(
                 cookiePath,
-                """
-                yt-dlp не найден, а Homebrew недоступен.
-                Установите вручную: brew install yt-dlp
-                или скачайте yt-dlp с https://github.com/yt-dlp/yt-dlp
-                """);
+                AppText.T("cookies.ytDlpMissing"));
         }
 
         var browsers = browser is { Length: > 0 }
             ? [browser]
-            : DefaultBrowsers;
+            : GetSupportedBrowsers();
 
         string? lastError = null;
         var permissionDenied = false;
@@ -93,10 +95,7 @@ public sealed class YtDlpBrowserCookieExporter(
             {
                 return CookieExportResult.Fail(
                     cookiePath,
-                    $"""
-                    Браузер «{browser}»: cookies для {siteHost} не найдены.
-                    Войдите на сайт через Patreon в этом браузере и повторите импорт.
-                    """);
+                    AppText.T("cookies.noCookiesForHost", browser, siteHost));
             }
         }
 
@@ -106,7 +105,7 @@ public sealed class YtDlpBrowserCookieExporter(
 
         return CookieExportResult.Fail(
             cookiePath,
-            $"Браузер «{browser}»: {Shorten(output)}",
+            AppText.T("cookies.browserError", browser, Shorten(output)),
             permissionDenied);
     }
 
@@ -157,28 +156,29 @@ public sealed class YtDlpBrowserCookieExporter(
     private static string BuildFailureMessage(string? lastError, bool permissionDenied)
     {
         if (!permissionDenied)
-            return lastError ?? "Не удалось экспортировать cookies.";
+            return lastError ?? AppText.T("cookies.exportFailed");
+
+        var intro = OperatingSystem.IsMacOS()
+            ? AppText.T("cookies.permissionMac")
+            : AppText.T("cookies.permissionOther");
 
         return $"""
-            macOS заблокировал доступ к cookies браузера (Operation not permitted).
-            sudo это не обходит — нужны права для программы, из которой запускается ForgiveMeCalia.
+            {intro}
 
-            {GetMacPermissionHelp()}
+            {GetPermissionHelp()}
 
-            Последняя ошибка:
+            {AppText.T("cookies.lastError")}
             {lastError}
             """;
     }
 
-    public static string GetMacPermissionHelp() =>
-        """
-        1. Системные настройки → Конфиденциальность и безопасность → Полный доступ к диску.
-        2. Включите Terminal (или Rider / iTerm — то, из чего вы запускаете dotnet run).
-        3. Перезапустите терминал и снова выберите «Импорт cookies».
-        4. В Safari должен быть выполнен вход на mistresscalia.com через Patreon.
+    public static string GetPermissionHelp()
+    {
+        if (!OperatingSystem.IsMacOS())
+            return AppText.T("cookies.permissionHelpOther");
 
-        Если Safari не открывается даже с правами — войдите в Firefox/Chrome и выберите импорт с браузера firefox или chrome.
-        """;
+        return AppText.T("cookies.permissionHelpMac");
+    }
 
     private static string Shorten(string value)
     {

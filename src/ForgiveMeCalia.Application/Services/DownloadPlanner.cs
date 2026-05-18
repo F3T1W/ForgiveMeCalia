@@ -1,4 +1,5 @@
 using ForgiveMeCalia.Application.Abstractions;
+using ForgiveMeCalia.Application.Localization;
 using ForgiveMeCalia.Domain.Entities;
 using ForgiveMeCalia.Domain.Enums;
 using ForgiveMeCalia.Domain.Services;
@@ -94,7 +95,7 @@ public sealed class DownloadPlanner(ILibraryPathProvider libraryPaths)
     private static string BuildFileName(AudioPost post)
     {
         if (post.Mp3Url is null)
-            throw new InvalidOperationException("MP3 URL is required.");
+            throw new InvalidOperationException(AppText.T("errors.mp3Required"));
 
         var extension = Path.GetExtension(new Uri(post.Mp3Url).AbsolutePath);
         if (string.IsNullOrWhiteSpace(extension))

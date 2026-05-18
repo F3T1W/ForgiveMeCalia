@@ -1,6 +1,7 @@
 using ForgiveMeCalia.Application.Abstractions;
 using ForgiveMeCalia.Application.Downloads;
 using ForgiveMeCalia.Application.Downloads.Commands.DownloadAudio;
+using ForgiveMeCalia.Application.Localization;
 using ForgiveMeCalia.Domain.Enums;
 using ForgiveMeCalia.Infrastructure.Auth;
 using MediatR;
@@ -15,7 +16,7 @@ internal static class AppActions
     {
         if (scope == DownloadScope.None)
         {
-            AnsiConsole.MarkupLine("[red]Не выбран тип загрузки.[/]");
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(AppText.T("action.noScope"))}[/]");
             return;
         }
 
@@ -27,10 +28,10 @@ internal static class AppActions
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine("[red]Загрузка прервана.[/]");
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(AppText.T("action.interrupted"))}[/]");
             AnsiConsole.MarkupLine(Markup.Escape(DownloadExceptionFormatter.Format(ex)));
             AnsiConsole.MarkupLine(
-                "[grey]Часто это временный сбой сети/TLS на macOS — запустите загрузку ещё раз.[/]");
+                $"[grey]{Markup.Escape(AppText.T("action.networkHint"))}[/]");
         }
     }
 
@@ -38,8 +39,8 @@ internal static class AppActions
     {
         using var host = AppHostFactory.Create();
         var library = host.Services.GetRequiredService<ILibraryPathProvider>();
-        AnsiConsole.MarkupLine($"[cyan]Музыка:[/] {Markup.Escape(library.GetLibraryRoot())}");
-        AnsiConsole.MarkupLine($"[cyan]Cookies:[/] {Markup.Escape(library.GetCookieFilePath())}");
+        AnsiConsole.MarkupLine($"[cyan]{Markup.Escape(AppText.T("action.music"))}:[/] {Markup.Escape(library.GetLibraryRoot())}");
+        AnsiConsole.MarkupLine($"[cyan]{Markup.Escape(AppText.T("action.cookies"))}:[/] {Markup.Escape(library.GetCookieFilePath())}");
     }
 
     public static async Task ImportCookiesAsync(string? browser = null)
@@ -48,26 +49,26 @@ internal static class AppActions
         var exporter = host.Services.GetRequiredService<IBrowserCookieExporter>();
         var library = host.Services.GetRequiredService<ILibraryPathProvider>();
 
-        AnsiConsole.MarkupLine("[cyan]Импорт cookies через yt-dlp…[/]");
+        AnsiConsole.MarkupLine($"[cyan]{Markup.Escape(AppText.T("action.importingCookies"))}[/]");
         if (browser is null)
-            AnsiConsole.MarkupLine("[grey]Пробую браузеры: safari → chrome → firefox …[/]");
+            AnsiConsole.MarkupLine($"[grey]{Markup.Escape(AppText.T("action.tryingBrowsers"))}[/]");
 
         var result = await exporter.ExportAsync(browser);
         if (result.Success)
         {
             AnsiConsole.MarkupLine(
-                $"[green]Готово.[/] Браузер: [yellow]{result.Browser}[/], файл: {Markup.Escape(result.CookieFilePath)}");
+                $"[green]{Markup.Escape(AppText.T("action.doneBrowserFile", result.Browser, result.CookieFilePath))}[/]");
             if (result.YtDlpWasInstalled)
-                AnsiConsole.MarkupLine("[grey]yt-dlp установлен через Homebrew.[/]");
+                AnsiConsole.MarkupLine($"[grey]{Markup.Escape(AppText.T("action.ytDlpInstalled"))}[/]");
             return;
         }
 
-        AnsiConsole.MarkupLine("[red]Не удалось импортировать cookies.[/]");
+        AnsiConsole.MarkupLine($"[red]{Markup.Escape(AppText.T("action.cookieImportFailed"))}[/]");
         if (result.IsPermissionDenied)
         {
-            AnsiConsole.Write(new Panel(YtDlpBrowserCookieExporter.GetMacPermissionHelp())
+            AnsiConsole.Write(new Panel(YtDlpBrowserCookieExporter.GetPermissionHelp())
             {
-                Header = new PanelHeader("macOS: нужен «Полный доступ к диску»"),
+                Header = new PanelHeader(AppText.T("action.cookieAccessHeader")),
                 Border = BoxBorder.Rounded
             });
         }
@@ -75,7 +76,7 @@ internal static class AppActions
         if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
             AnsiConsole.MarkupLine(Markup.Escape(result.ErrorMessage));
 
-        AnsiConsole.MarkupLine($"[grey]Путь к файлу:[/] {Markup.Escape(library.GetCookieFilePath())}");
+        AnsiConsole.MarkupLine($"[grey]{Markup.Escape(AppText.T("action.filePath"))}:[/] {Markup.Escape(library.GetCookieFilePath())}");
     }
 
     public static void ShowLoginHelp()
@@ -84,21 +85,18 @@ internal static class AppActions
         var library = host.Services.GetRequiredService<ILibraryPathProvider>();
         var cookiePath = library.GetCookieFilePath();
         AnsiConsole.Write(new Panel(
-            $"""
-            1. Войдите на https://mistresscalia.com через Patreon в Safari (или Chrome/Firefox).
-            2. В меню выберите «Импорт cookies из браузера» — программа сама:
-               • установит yt-dlp через brew (если нет);
-               • выгрузит cookies в {cookiePath}
-            3. На Mac может понадобиться «Полный доступ к диску» для Terminal/Rider
-               (Системные настройки → Конфиденциальность).
-            4. Запустите загрузку платных или всех файлов.
-
-            Бесплатные файлы cookies не требуют.
-            """)
+            AppText.T("action.loginHelp", cookiePath))
         {
-            Header = new PanelHeader("Авторизация без GUI"),
+            Header = new PanelHeader(AppText.T("action.authHeader")),
             Border = BoxBorder.Rounded
         });
+    }
+
+    public static IReadOnlyList<string> GetSupportedBrowsers()
+    {
+        using var host = AppHostFactory.Create();
+        var exporter = host.Services.GetRequiredService<IBrowserCookieExporter>();
+        return exporter.GetSupportedBrowsers();
     }
 
     public static async Task CountCatalogAsync(DownloadScope scope)
@@ -109,13 +107,13 @@ internal static class AppActions
         if (scope.HasFlag(DownloadScope.Free))
         {
             var urls = await catalog.GetPostUrlsAsync(AudioTier.Free, CancellationToken.None);
-            AnsiConsole.MarkupLine($"[cyan]Бесплатные:[/] {urls.Count} записей");
+            AnsiConsole.MarkupLine($"[cyan]{Markup.Escape(AppText.T("action.freeCount", urls.Count))}[/]");
         }
 
         if (scope.HasFlag(DownloadScope.Paid))
         {
             var urls = await catalog.GetPostUrlsAsync(AudioTier.Paid, CancellationToken.None);
-            AnsiConsole.MarkupLine($"[cyan]Платные:[/] {urls.Count} записей");
+            AnsiConsole.MarkupLine($"[cyan]{Markup.Escape(AppText.T("action.paidCount", urls.Count))}[/]");
         }
     }
 

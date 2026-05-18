@@ -1,6 +1,7 @@
 using System.Text;
 using ForgiveMeCalia.Application.Abstractions;
 using ForgiveMeCalia.Application.Downloads;
+using ForgiveMeCalia.Application.Localization;
 using Spectre.Console;
 
 namespace ForgiveMeCalia.Cli.Reporting;
@@ -15,11 +16,8 @@ public sealed class SpectreProgressReporter : IProgressReporter
     {
         lock (_sync)
         {
-            if (message.Contains("Загрузка", StringComparison.Ordinal))
-            {
-                _completedDownloads.Clear();
-                _downloadCompleted = 0;
-            }
+            _completedDownloads.Clear();
+            _downloadCompleted = 0;
 
             AnsiConsole.MarkupLine($"[cyan]▶[/] {Markup.Escape(message)}");
         }
@@ -29,7 +27,7 @@ public sealed class SpectreProgressReporter : IProgressReporter
     {
         lock (_sync)
             AnsiConsole.MarkupLine(
-                $"[grey]Обнаружение[/] [yellow]{current}[/]/[yellow]{total}[/] — {Markup.Escape(Truncate(itemName, 70))}");
+                $"[grey]{Markup.Escape(AppText.T("progress.discovery"))}[/] [yellow]{current}[/]/[yellow]{total}[/] - {Markup.Escape(Truncate(itemName, 70))}");
     }
 
     public void ReportDownload(int current, int total, string fileName, double fileProgress)
@@ -51,7 +49,7 @@ public sealed class SpectreProgressReporter : IProgressReporter
 
     public void ReportSkipped(string reason, string itemName)
     {
-        // Счётчик «пропущено» есть в итоговой таблице — не засоряем консоль построчным выводом.
+        // The summary already reports skipped items, so avoid noisy per-item output.
     }
 
     public void ReportWarning(string message)
@@ -76,13 +74,13 @@ public sealed class SpectreProgressReporter : IProgressReporter
         lock (_sync)
         {
             var table = new Table().Border(TableBorder.Rounded);
-            table.AddColumn("Метрика");
-            table.AddColumn("Значение");
-            table.AddRow("Найдено на сайте", summary.Discovered.ToString());
-            table.AddRow("Скачано", summary.Downloaded.ToString());
-            table.AddRow("Пропущено (уже есть)", summary.Skipped.ToString());
-            table.AddRow("Заблокировано (нет доступа)", summary.Locked.ToString());
-            table.AddRow("Ошибок", summary.Failed.ToString());
+            table.AddColumn(AppText.T("progress.metric"));
+            table.AddColumn(AppText.T("progress.value"));
+            table.AddRow(AppText.T("progress.found"), summary.Discovered.ToString());
+            table.AddRow(AppText.T("progress.downloaded"), summary.Downloaded.ToString());
+            table.AddRow(AppText.T("progress.skipped"), summary.Skipped.ToString());
+            table.AddRow(AppText.T("progress.locked"), summary.Locked.ToString());
+            table.AddRow(AppText.T("progress.errors"), summary.Failed.ToString());
             AnsiConsole.Write(table);
 
             if (summary.Failures.Count == 0)
@@ -98,7 +96,7 @@ public sealed class SpectreProgressReporter : IProgressReporter
 
             AnsiConsole.Write(new Panel(body.ToString().TrimEnd())
             {
-                Header = new PanelHeader($"Ошибки ({summary.Failures.Count})"),
+                Header = new PanelHeader($"{AppText.T("progress.errors")} ({summary.Failures.Count})"),
                 Border = BoxBorder.Rounded
             });
         }

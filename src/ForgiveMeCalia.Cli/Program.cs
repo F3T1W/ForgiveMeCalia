@@ -9,13 +9,13 @@ if (ShouldRunInteractiveMenu(args))
     return;
 }
 
-var root = new RootCommand("ForgiveMeCalia — загрузчик аудио с mistresscalia.com");
+var root = new RootCommand("ForgiveMeCalia - audio downloader for mistresscalia.com");
 
-var download = new Command("download", "Скачать аудио в папку «Музыка»");
-var free = new Option<bool>("--free", "Только бесплатные файлы");
-var paid = new Option<bool>("--paid", "Только платные (нужны cookies Patreon)");
-var all = new Option<bool>("--all", "Бесплатные и платные");
-var parallel = new Option<int>("--parallel", () => 4, "Число параллельных загрузок");
+var download = new Command("download", "Download audio into the Music folder");
+var free = new Option<bool>("--free", "Free files only");
+var paid = new Option<bool>("--paid", "Paid files only (Patreon cookies required)");
+var all = new Option<bool>("--all", "Free and paid files");
+var parallel = new Option<int>("--parallel", () => 4, "Number of parallel downloads");
 
 download.AddOption(free);
 download.AddOption(paid);
@@ -26,15 +26,15 @@ download.SetHandler(async (bool isFree, bool isPaid, bool isAll, int parallelCou
     var scope = AppActions.ResolveScope(isFree, isPaid, isAll);
     if (scope == DownloadScope.None)
     {
-        AnsiConsole.MarkupLine("[red]Укажите --free, --paid или --all[/]");
+        AnsiConsole.MarkupLine("[red]Specify --free, --paid, or --all[/]");
         return;
     }
 
     await AppActions.RunDownloadAsync(scope, parallelCount);
 }, free, paid, all, parallel);
 
-var catalog = new Command("catalog", "Просмотр каталога на сайте");
-var catalogCount = new Command("count", "Посчитать записи в категориях (без загрузки)");
+var catalog = new Command("catalog", "Inspect the remote catalog");
+var catalogCount = new Command("count", "Count category posts without downloading");
 catalogCount.AddOption(free);
 catalogCount.AddOption(paid);
 catalogCount.AddOption(all);
@@ -43,7 +43,7 @@ catalogCount.SetHandler(async (bool isFree, bool isPaid, bool isAll) =>
     var scope = AppActions.ResolveScope(isFree, isPaid, isAll);
     if (scope == DownloadScope.None)
     {
-        AnsiConsole.MarkupLine("[red]Укажите --free, --paid или --all[/]");
+        AnsiConsole.MarkupLine("[red]Specify --free, --paid, or --all[/]");
         return;
     }
 
@@ -51,20 +51,20 @@ catalogCount.SetHandler(async (bool isFree, bool isPaid, bool isAll) =>
 }, free, paid, all);
 catalog.AddCommand(catalogCount);
 
-var paths = new Command("paths", "Показать пути к музыке и cookies");
+var paths = new Command("paths", "Show music and cookie paths");
 paths.SetHandler(AppActions.ShowPaths);
 
-var loginHelp = new Command("login-help", "Как экспортировать cookies без GUI в программе");
+var loginHelp = new Command("login-help", "Explain browser cookie import");
 loginHelp.SetHandler(AppActions.ShowLoginHelp);
 
-var cookies = new Command("cookies", "Работа с cookies Patreon");
-var cookiesImport = new Command("import", "Импорт cookies из браузера через yt-dlp");
-var browserOption = new Option<string?>("--browser", "safari, chrome, firefox, edge, brave, chromium");
+var cookies = new Command("cookies", "Manage Patreon cookies");
+var cookiesImport = new Command("import", "Import browser cookies through yt-dlp");
+var browserOption = new Option<string?>("--browser", "Browser name supported by yt-dlp");
 cookiesImport.AddOption(browserOption);
 cookiesImport.SetHandler(async (string? browser) => await AppActions.ImportCookiesAsync(browser), browserOption);
 cookies.AddCommand(cookiesImport);
 
-var menu = new Command("menu", "Интерактивное меню");
+var menu = new Command("menu", "Interactive menu");
 menu.SetHandler(async () => await InteractiveMenuRunner.RunAsync());
 
 root.AddCommand(download);

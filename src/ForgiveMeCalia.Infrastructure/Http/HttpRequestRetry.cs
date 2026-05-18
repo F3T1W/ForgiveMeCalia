@@ -1,3 +1,5 @@
+using ForgiveMeCalia.Application.Localization;
+
 namespace ForgiveMeCalia.Infrastructure.Http;
 
 internal static class HttpRequestRetry
@@ -29,7 +31,7 @@ internal static class HttpRequestRetry
             }
         }
 
-        throw last ?? new InvalidOperationException("HTTP retry failed without exception.");
+        throw last ?? new InvalidOperationException(AppText.T("errors.httpRetry"));
     }
 
     public static Task ExecuteAsync(Func<CancellationToken, Task> action, CancellationToken cancellationToken) =>

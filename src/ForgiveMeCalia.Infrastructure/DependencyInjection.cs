@@ -28,7 +28,7 @@ public static class DependencyInjection
             })
             .ConfigurePrimaryHttpMessageHandler(provider => new SocketsHttpHandler
             {
-                // Без Brotli: на macOS реже падает SSL/декомпрессия при длинных сессиях.
+                // Avoid Brotli: long macOS sessions have shown fewer SSL/decompression failures this way.
                 AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
                 CookieContainer = provider.GetRequiredService<SiteCookieContainer>(),
                 UseCookies = true,
