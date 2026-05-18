@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/ForgiveMeCalia.Domain/ForgiveMeCalia.Domain.csproj" />
+  <Project Path="src/ForgiveMeCalia.Application/ForgiveMeCalia.Application.csproj" />
+  <Project Path="src/ForgiveMeCalia.Infrastructure/ForgiveMeCalia.Infrastructure.csproj" />
+  <Project Path="src/ForgiveMeCalia.Cli/ForgiveMeCalia.Cli.csproj" />
+</Solution>
