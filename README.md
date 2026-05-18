@@ -9,6 +9,7 @@ The app scans free and Patreon-accessible posts, extracts MP3 links, stores file
 - Interactive menu when launched without command-line arguments.
 - Runtime language switch in the interactive menu: English, Russian, Irish, Korean, Japanese, and Uzbek.
 - Download free, paid, or all accessible audio files.
+- Create custom audio by choosing one induction MP3 and one main hypnosis MP3 from downloaded free/paid files.
 - Import cookies from Safari, Chrome, Firefox, Brave, Chromium, or Edge via `yt-dlp`.
 - Use an existing Patreon session through browser cookies.
 - Crawl WordPress category pagination.
@@ -70,6 +71,20 @@ Set download parallelism:
 dotnet run --project src/ForgiveMeCalia.Cli -- download --all --parallel 4
 ```
 
+Create a custom audio file:
+
+1. Run the interactive menu.
+2. Choose `Create custom audio`.
+3. Pick the induction file first.
+4. Pick the main hypnosis file second.
+5. Press Enter to create the merged MP3.
+
+The generated file is saved under `Custom` and is named:
+
+```text
+<induction file name without extension> + <main file name without extension>.mp3
+```
+
 ## Cookies and Patreon
 
 For paid files, sign in to `mistresscalia.com` through Patreon in your browser, then import cookies:
@@ -99,6 +114,19 @@ Default music library:
 
 ```text
 ~/Music/MistressCalia/
+```
+
+Downloaded files:
+
+```text
+~/Music/MistressCalia/Free/
+~/Music/MistressCalia/Paid/
+```
+
+Custom merged files:
+
+```text
+~/Music/MistressCalia/Custom/
 ```
 
 Cookies:

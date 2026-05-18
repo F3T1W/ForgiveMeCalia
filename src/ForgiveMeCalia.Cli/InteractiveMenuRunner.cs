@@ -9,6 +9,7 @@ internal enum MenuChoice
     DownloadFree,
     DownloadPaid,
     DownloadAll,
+    CreateCustomAudio,
     ShowPaths,
     ImportCookies,
     ConfigureParallel,
@@ -49,6 +50,9 @@ internal static class InteractiveMenuRunner
                     break;
                 case MenuChoice.DownloadAll:
                     await AppActions.RunDownloadAsync(DownloadScope.All, parallelCount);
+                    break;
+                case MenuChoice.CreateCustomAudio:
+                    await AppActions.CreateCustomAudioAsync();
                     break;
                 case MenuChoice.ShowPaths:
                     AppActions.ShowPaths();
@@ -124,6 +128,7 @@ internal static class InteractiveMenuRunner
         MenuChoice.DownloadFree => AppText.T("menu.downloadFree"),
         MenuChoice.DownloadPaid => AppText.T("menu.downloadPaid"),
         MenuChoice.DownloadAll => AppText.T("menu.downloadAll"),
+        MenuChoice.CreateCustomAudio => AppText.T("menu.createCustomAudio"),
         MenuChoice.ShowPaths => AppText.T("menu.showPaths"),
         MenuChoice.ImportCookies => AppText.T("menu.importCookies"),
         MenuChoice.ConfigureParallel => AppText.T("menu.configureParallel"),

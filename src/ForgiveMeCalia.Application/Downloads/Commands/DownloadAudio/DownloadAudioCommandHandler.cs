@@ -150,8 +150,7 @@ public sealed class DownloadAudioCommandHandler(
             if (post.Mp3Url is null || post.IsLocked || !indexedUrls.Contains(post.Mp3Url))
                 continue;
 
-            var (directory, fileName) = planner.GetDestination(post);
-            if (!File.Exists(Path.Combine(directory, fileName)))
+            if (!planner.DestinationExists(post))
                 staleUrls.Add(post.Mp3Url);
         }
 

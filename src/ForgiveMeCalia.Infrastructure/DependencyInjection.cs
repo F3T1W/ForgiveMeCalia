@@ -2,6 +2,7 @@ using System.Net;
 using ForgiveMeCalia.Application.Abstractions;
 using ForgiveMeCalia.Application.Options;
 using ForgiveMeCalia.Infrastructure.Auth;
+using ForgiveMeCalia.Infrastructure.Audio;
 using ForgiveMeCalia.Infrastructure.Downloads;
 using ForgiveMeCalia.Infrastructure.Http;
 using ForgiveMeCalia.Infrastructure.Persistence;
@@ -39,6 +40,7 @@ public static class DependencyInjection
         services.AddSingleton<ILibraryPathProvider, LibraryPathProvider>();
         services.AddSingleton<IAudioCatalogService, MistressCaliaAudioCatalogService>();
         services.AddSingleton<IFileDownloadService, FileDownloadService>();
+        services.AddSingleton<ICustomAudioService, CustomAudioService>();
         services.AddSingleton<IDownloadIndexStore, JsonDownloadIndexStore>();
         services.AddSingleton<IBrowserCookieExporter, YtDlpBrowserCookieExporter>();
         services.AddSingleton<ICookieSessionService, CookieSessionService>();

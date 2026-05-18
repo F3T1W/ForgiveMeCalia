@@ -12,6 +12,8 @@ namespace ForgiveMeCalia.Cli;
 
 internal static class AppActions
 {
+    private sealed record AudioFileChoice(string DisplayName, string FullPath);
+
     public static async Task RunDownloadAsync(DownloadScope scope, int parallelCount)
     {
         if (scope == DownloadScope.None)
@@ -41,6 +43,47 @@ internal static class AppActions
         var library = host.Services.GetRequiredService<ILibraryPathProvider>();
         AnsiConsole.MarkupLine($"[cyan]{Markup.Escape(AppText.T("action.music"))}:[/] {Markup.Escape(library.GetLibraryRoot())}");
         AnsiConsole.MarkupLine($"[cyan]{Markup.Escape(AppText.T("action.cookies"))}:[/] {Markup.Escape(library.GetCookieFilePath())}");
+        AnsiConsole.MarkupLine($"[cyan]{Markup.Escape(AppText.T("action.custom"))}:[/] {Markup.Escape(library.GetCustomRoot())}");
+    }
+
+    public static async Task CreateCustomAudioAsync()
+    {
+        using var host = AppHostFactory.Create();
+        var library = host.Services.GetRequiredService<ILibraryPathProvider>();
+        var customAudio = host.Services.GetRequiredService<ICustomAudioService>();
+        var files = FindDownloadedAudioFiles(library)
+            .OrderBy(file => file.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (files.Count < 2)
+        {
+            AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(AppText.T("custom.notEnoughFiles"))}[/]");
+            return;
+        }
+
+        var induction = PromptAudioFile("custom.selectInduction", files);
+        var mainHypnosis = PromptAudioFile("custom.selectMain", files);
+
+        if (string.Equals(induction.FullPath, mainHypnosis.FullPath, StringComparison.OrdinalIgnoreCase)
+            && !AnsiConsole.Confirm($"[yellow]{Markup.Escape(AppText.T("custom.sameFileConfirm"))}[/]", false))
+        {
+            AnsiConsole.MarkupLine($"[grey]{Markup.Escape(AppText.T("custom.cancelled"))}[/]");
+            return;
+        }
+
+        try
+        {
+            var outputPath = await customAudio.CreateAsync(
+                induction.FullPath,
+                mainHypnosis.FullPath,
+                CancellationToken.None);
+
+            AnsiConsole.MarkupLine($"[green]{Markup.Escape(AppText.T("custom.created", outputPath))}[/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(AppText.T("custom.failed", DownloadExceptionFormatter.Format(ex)))}[/]");
+        }
     }
 
     public static async Task ImportCookiesAsync(string? browser = null)
@@ -97,6 +140,44 @@ internal static class AppActions
         using var host = AppHostFactory.Create();
         var exporter = host.Services.GetRequiredService<IBrowserCookieExporter>();
         return exporter.GetSupportedBrowsers();
+    }
+
+    private static AudioFileChoice PromptAudioFile(string titleKey, IReadOnlyList<AudioFileChoice> files) =>
+        AnsiConsole.Prompt(
+            new SelectionPrompt<AudioFileChoice>()
+                .Title($"[cyan]{Markup.Escape(AppText.T(titleKey))}[/]")
+                .PageSize(20)
+                .AddChoices(files)
+                .UseConverter(file => Markup.Escape(file.DisplayName)));
+
+    private static IEnumerable<AudioFileChoice> FindDownloadedAudioFiles(ILibraryPathProvider library)
+    {
+        var libraryRoot = library.GetLibraryRoot();
+        var candidateRoots = new[]
+            {
+                library.GetTierRoot("Free"),
+                library.GetTierRoot("Paid"),
+                library.GetTierRoot("free"),
+                library.GetTierRoot("paid")
+            }
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var root in candidateRoots)
+        {
+            if (!Directory.Exists(root))
+                continue;
+
+            foreach (var path in Directory.EnumerateFiles(root, "*.mp3", SearchOption.AllDirectories))
+            {
+                var fullPath = Path.GetFullPath(path);
+                if (!seen.Add(fullPath))
+                    continue;
+
+                var displayName = Path.GetRelativePath(libraryRoot, fullPath);
+                yield return new AudioFileChoice(displayName, fullPath);
+            }
+        }
     }
 
     public static async Task CountCatalogAsync(DownloadScope scope)

@@ -17,8 +17,8 @@ public sealed class DownloadPlanner(ILibraryPathProvider libraryPaths)
         {
             var tierFolder = tierGroup.Key switch
             {
-                AudioTier.Free => "free",
-                AudioTier.Paid => "paid",
+                AudioTier.Free => "Free",
+                AudioTier.Paid => "Paid",
                 _ => throw new ArgumentOutOfRangeException()
             };
 
@@ -31,7 +31,8 @@ public sealed class DownloadPlanner(ILibraryPathProvider libraryPaths)
                     continue;
 
                 var (destinationDirectory, fileName) = GetDestination(post, tierRoot, seriesAssignments);
-                if (File.Exists(Path.Combine(destinationDirectory, fileName)))
+                if (DestinationExists(post, seriesAssignments)
+                    || File.Exists(Path.Combine(destinationDirectory, fileName)))
                     continue;
 
                 plan.Add(new DownloadPlanItem
@@ -82,14 +83,35 @@ public sealed class DownloadPlanner(ILibraryPathProvider libraryPaths)
     {
         tierRoot ??= libraryPaths.GetTierRoot(post.Tier switch
         {
-            AudioTier.Free => "free",
-            AudioTier.Paid => "paid",
+            AudioTier.Free => "Free",
+            AudioTier.Paid => "Paid",
             _ => throw new ArgumentOutOfRangeException()
         });
 
         seriesAssignments ??= AssignSeriesFolders([post]);
         var folderName = seriesAssignments[post];
         return (Path.Combine(tierRoot, folderName), BuildFileName(post));
+    }
+
+    public bool DestinationExists(
+        AudioPost post,
+        Dictionary<AudioPost, string>? seriesAssignments = null)
+    {
+        if (post.Mp3Url is null || post.IsLocked)
+            return false;
+
+        seriesAssignments ??= AssignSeriesFolders([post]);
+
+        var roots = post.Tier switch
+        {
+            AudioTier.Free => new[] { "Free", "free" },
+            AudioTier.Paid => new[] { "Paid", "paid" },
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+        return roots
+            .Select(root => GetDestination(post, libraryPaths.GetTierRoot(root), seriesAssignments))
+            .Any(destination => File.Exists(Path.Combine(destination.Directory, destination.FileName)));
     }
 
     private static string BuildFileName(AudioPost post)

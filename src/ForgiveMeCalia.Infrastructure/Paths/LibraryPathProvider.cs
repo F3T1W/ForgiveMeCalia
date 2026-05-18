@@ -18,6 +18,9 @@ public sealed class LibraryPathProvider(IOptions<DownloaderOptions> options) : I
     public string GetTierRoot(string tierFolderName) =>
         Path.Combine(GetLibraryRoot(), tierFolderName);
 
+    public string GetCustomRoot() =>
+        Path.Combine(GetLibraryRoot(), "Custom");
+
     public string GetCookieFilePath()
     {
         var configRoot = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
