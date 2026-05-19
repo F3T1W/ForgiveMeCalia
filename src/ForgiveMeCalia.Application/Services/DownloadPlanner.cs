@@ -103,15 +103,9 @@ public sealed class DownloadPlanner(ILibraryPathProvider libraryPaths)
             return null;
 
         var seriesAssignments = AssignSeriesFolders([post]);
-        foreach (var root in GetCompatibleTierFolderNames(post.Tier))
-        {
-            var destination = GetDestination(post, libraryPaths.GetTierRoot(root), seriesAssignments);
-            var path = Path.Combine(destination.Directory, destination.FileName);
-            if (File.Exists(path))
-                return path;
-        }
-
-        return null;
+        return GetCompatibleTierFolderNames(post.Tier).Select(root =>
+            GetDestination(post, libraryPaths.GetTierRoot(root), seriesAssignments)).Select(destination =>
+            Path.Combine(destination.Directory, destination.FileName)).FirstOrDefault(File.Exists);
     }
 
     private static string GetTierFolderName(AudioTier tier) => tier switch
