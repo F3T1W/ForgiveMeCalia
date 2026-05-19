@@ -10,6 +10,7 @@ internal enum MenuChoice
     DownloadPaid,
     DownloadAll,
     CreateCustomAudio,
+    CreateLibraryArchive,
     ShowPaths,
     ImportCookies,
     ConfigureParallel,
@@ -53,6 +54,9 @@ internal static class InteractiveMenuRunner
                     break;
                 case MenuChoice.CreateCustomAudio:
                     await AppActions.CreateCustomAudioAsync();
+                    break;
+                case MenuChoice.CreateLibraryArchive:
+                    await RunArchiveCreationAsync();
                     break;
                 case MenuChoice.ShowPaths:
                     AppActions.ShowPaths();
@@ -111,6 +115,24 @@ internal static class InteractiveMenuRunner
         await AppActions.ImportCookiesAsync(browser);
     }
 
+    private static async Task RunArchiveCreationAsync()
+    {
+        var usePassword = AnsiConsole.Confirm(
+            $"[cyan]{Markup.Escape(AppText.T("archive.usePassword"))}[/]",
+            false);
+
+        string? password = null;
+        if (usePassword)
+        {
+            password = AnsiConsole.Prompt(
+                new TextPrompt<string>($"[cyan]{Markup.Escape(AppText.T("archive.password"))}[/]")
+                    .Secret()
+                    .AllowEmpty());
+        }
+
+        await AppActions.CreateLibraryArchiveAsync(password);
+    }
+
     private static void ChangeLanguage()
     {
         var selected = AnsiConsole.Prompt(
@@ -129,6 +151,7 @@ internal static class InteractiveMenuRunner
         MenuChoice.DownloadPaid => AppText.T("menu.downloadPaid"),
         MenuChoice.DownloadAll => AppText.T("menu.downloadAll"),
         MenuChoice.CreateCustomAudio => AppText.T("menu.createCustomAudio"),
+        MenuChoice.CreateLibraryArchive => AppText.T("menu.createLibraryArchive"),
         MenuChoice.ShowPaths => AppText.T("menu.showPaths"),
         MenuChoice.ImportCookies => AppText.T("menu.importCookies"),
         MenuChoice.ConfigureParallel => AppText.T("menu.configureParallel"),

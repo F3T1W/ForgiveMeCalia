@@ -86,6 +86,27 @@ internal static class AppActions
         }
     }
 
+    public static async Task CreateLibraryArchiveAsync(string? password)
+    {
+        using var host = AppHostFactory.Create();
+        var archiveService = host.Services.GetRequiredService<ILibraryArchiveService>();
+        var passwordProtected = !string.IsNullOrWhiteSpace(password);
+
+        try
+        {
+            var archivePath = await AnsiConsole.Status()
+                .Spinner(Spinner.Known.Dots)
+                .StartAsync(AppText.T("archive.creating"), _ =>
+                    archiveService.CreateArchiveAsync(password, CancellationToken.None));
+
+            WriteArchiveCreatedPanel(archivePath, passwordProtected);
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(AppText.T("archive.failed", DownloadExceptionFormatter.Format(ex)))}[/]");
+        }
+    }
+
     public static async Task ImportCookiesAsync(string? browser = null)
     {
         using var host = AppHostFactory.Create();
@@ -178,6 +199,37 @@ internal static class AppActions
                 yield return new AudioFileChoice(displayName, fullPath);
             }
         }
+    }
+
+    private static void WriteArchiveCreatedPanel(string archivePath, bool passwordProtected)
+    {
+        var fileInfo = new FileInfo(archivePath);
+        var table = new Table().NoBorder();
+        table.AddColumn(AppText.T("progress.metric"));
+        table.AddColumn(AppText.T("progress.value"));
+        table.AddRow(AppText.T("archive.path"), Markup.Escape(archivePath));
+        table.AddRow(AppText.T("archive.size"), FormatBytes(fileInfo.Length));
+        table.AddRow(AppText.T("archive.passwordProtected"), AppText.T(passwordProtected ? "common.yes" : "common.no"));
+
+        AnsiConsole.Write(new Panel(table)
+        {
+            Header = new PanelHeader(AppText.T("archive.createdTitle")),
+            Border = BoxBorder.Rounded
+        });
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        var value = (double)bytes;
+        var unitIndex = 0;
+        while (value >= 1024 && unitIndex < units.Length - 1)
+        {
+            value /= 1024;
+            unitIndex++;
+        }
+
+        return $"{value:0.##} {units[unitIndex]}";
     }
 
     public static async Task CountCatalogAsync(DownloadScope scope)

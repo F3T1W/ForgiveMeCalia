@@ -10,6 +10,7 @@ The app scans free and Patreon-accessible posts, extracts MP3 links, stores file
 - Runtime language switch in the interactive menu: English, Russian, Irish, Korean, Japanese, and Uzbek.
 - Download free, paid, or all accessible audio files.
 - Create custom audio by choosing one induction MP3 and one main hypnosis MP3 from downloaded free/paid files.
+- Create a ZIP archive with the contents of `Free`, `Paid`, and `Custom`, optionally protected with a password.
 - Import cookies from Safari, Chrome, Firefox, Brave, Chromium, or Edge via `yt-dlp`.
 - Use an existing Patreon session through browser cookies.
 - Crawl WordPress category pagination.
@@ -84,6 +85,13 @@ The generated file is saved under `Custom` and is named:
 ```text
 <induction file name without extension> + <main file name without extension>.mp3
 ```
+
+Create a ZIP archive:
+
+1. Run the interactive menu.
+2. Choose `Create ZIP archive`.
+3. Decide whether to add a password.
+4. The archive is saved in the library root as `MistressCalia-YYYYMMDD-HHMMSS.zip`.
 
 ## Cookies and Patreon
 
