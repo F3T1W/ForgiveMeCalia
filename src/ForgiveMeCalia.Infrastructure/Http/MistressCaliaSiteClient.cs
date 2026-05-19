@@ -1,25 +1,14 @@
-using ForgiveMeCalia.Application.Options;
-using Microsoft.Extensions.Options;
-
 namespace ForgiveMeCalia.Infrastructure.Http;
 
-public sealed class MistressCaliaSiteClient
+public sealed class MistressCaliaSiteClient(HttpClient httpClient)
 {
-    private readonly HttpClient _httpClient;
-
-    public MistressCaliaSiteClient(HttpClient httpClient, IOptions<DownloaderOptions> options)
-    {
-        _httpClient = httpClient;
-        _ = options;
-    }
-
     public Uri CreateSiteUri(string relativeOrAbsolute = "/")
     {
         if (Uri.TryCreate(relativeOrAbsolute, UriKind.Absolute, out var absolute)
             && absolute.Scheme.StartsWith("http", StringComparison.OrdinalIgnoreCase))
             return absolute;
 
-        return new Uri(_httpClient.BaseAddress!, relativeOrAbsolute.TrimStart('/'));
+        return new Uri(httpClient.BaseAddress!, relativeOrAbsolute.TrimStart('/'));
     }
 
     public Task<string> GetStringAsync(string pathOrUrl, CancellationToken cancellationToken) =>
@@ -36,7 +25,7 @@ public sealed class MistressCaliaSiteClient
 
     private async Task<string> GetStringCoreAsync(string pathOrUrl, CancellationToken cancellationToken)
     {
-        using var response = await _httpClient.GetAsync(
+        using var response = await httpClient.GetAsync(
             pathOrUrl,
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
@@ -53,7 +42,7 @@ public sealed class MistressCaliaSiteClient
         IProgress<double>? progress,
         CancellationToken cancellationToken)
     {
-        using var response = await _httpClient.GetAsync(
+        using var response = await httpClient.GetAsync(
             source,
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);

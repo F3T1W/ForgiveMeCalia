@@ -21,7 +21,7 @@ download.AddOption(free);
 download.AddOption(paid);
 download.AddOption(all);
 download.AddOption(parallel);
-download.SetHandler(async (bool isFree, bool isPaid, bool isAll, int parallelCount) =>
+download.SetHandler(async (isFree, isPaid, isAll, parallelCount) =>
 {
     var scope = AppActions.ResolveScope(isFree, isPaid, isAll);
     if (scope == DownloadScope.None)
@@ -38,7 +38,7 @@ var catalogCount = new Command("count", "Count category posts without downloadin
 catalogCount.AddOption(free);
 catalogCount.AddOption(paid);
 catalogCount.AddOption(all);
-catalogCount.SetHandler(async (bool isFree, bool isPaid, bool isAll) =>
+catalogCount.SetHandler(async (isFree, isPaid, isAll) =>
 {
     var scope = AppActions.ResolveScope(isFree, isPaid, isAll);
     if (scope == DownloadScope.None)
@@ -61,7 +61,7 @@ var cookies = new Command("cookies", "Manage Patreon cookies");
 var cookiesImport = new Command("import", "Import browser cookies through yt-dlp");
 var browserOption = new Option<string?>("--browser", "Browser name supported by yt-dlp");
 cookiesImport.AddOption(browserOption);
-cookiesImport.SetHandler(async (string? browser) => await AppActions.ImportCookiesAsync(browser), browserOption);
+cookiesImport.SetHandler(async browser => await AppActions.ImportCookiesAsync(browser), browserOption);
 cookies.AddCommand(cookiesImport);
 
 var menu = new Command("menu", "Interactive menu");
@@ -75,16 +75,11 @@ root.AddCommand(cookies);
 root.AddCommand(menu);
 
 await root.InvokeAsync(args);
+return;
 
 static bool ShouldRunInteractiveMenu(string[] arguments)
 {
-    if (arguments.Length == 0)
-        return true;
-
-    if (arguments is ["menu"] or ["-m"] or ["--menu"])
-        return true;
-
-    return false;
+    return arguments.Length == 0 || arguments is ["menu"] or ["-m"] or ["--menu"];
 }
 
 
@@ -197,8 +192,13 @@ static bool ShouldRunInteractiveMenu(string[] arguments)
 
 
 
+
+
+
+
+
 /*
----::-------::::-::-----:-::-----------------------------=----::::-:--=-==-=-====---=--=--===+====+=
+ ---::-------::::-::-----:-::-----------------------------=----::::-:--=-==-=-====---=--=--===+====+=
    ----:--:------:-::::------::-------------------------=----:-:::-::----=----=-======-=--==-=======+++
    -------------::::::::::---:::---------------***#######*###=--:::::::---=-----=====-----===========+*
    --------------::::::::::--::-------------**########%###%%#***-:::::----==-=======--------=========+*
@@ -287,6 +287,6 @@ static bool ShouldRunInteractiveMenu(string[] arguments)
    ------:--------------@@%%%@@*+++++=----------=---=---=-=++====--===========%@@@%@@@@%@-----:--------
    -:-:-----::---:---:--#@%%@@@@++====--------------------==+===============+%@@@@@@@@@----:-----:-----
    ----::--:::-::-:::---:::@@%@@@+++==-=-------------------=+====-===-=====+@@@%@@@#%#@----------::----
-   
-                                    Thanks to u, Mistress ;3!
-*/
+ 
+                                        Thx for ur work, Mistress ;3
+ */

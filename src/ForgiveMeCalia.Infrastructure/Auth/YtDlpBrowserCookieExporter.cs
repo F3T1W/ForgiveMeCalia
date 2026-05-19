@@ -2,13 +2,11 @@ using ForgiveMeCalia.Application.Abstractions;
 using ForgiveMeCalia.Application.Localization;
 using ForgiveMeCalia.Application.Options;
 using ForgiveMeCalia.Infrastructure.Platform;
-using Microsoft.Extensions.Options;
 
 namespace ForgiveMeCalia.Infrastructure.Auth;
 
 public sealed class YtDlpBrowserCookieExporter(
-    ILibraryPathProvider libraryPaths,
-    IOptions<DownloaderOptions> options) : IBrowserCookieExporter
+    ILibraryPathProvider libraryPaths) : IBrowserCookieExporter
 {
     /// <summary>
     /// yt-dlp needs a URL handled by a known extractor before it exports browser cookies.
@@ -65,7 +63,7 @@ public sealed class YtDlpBrowserCookieExporter(
             ytDlpInstalled);
     }
 
-    private async Task<CookieExportResult> TryExportWithBrowserAsync(
+    private static async Task<CookieExportResult> TryExportWithBrowserAsync(
         string browser,
         string cookiePath,
         CancellationToken cancellationToken)
@@ -86,7 +84,7 @@ public sealed class YtDlpBrowserCookieExporter(
         var result = await ExternalProcessRunner.RunAsync("yt-dlp", args, cancellationToken);
         if (File.Exists(cookiePath) && new FileInfo(cookiePath).Length > 0)
         {
-            var siteHost = new Uri(options.Value.BaseUrl).Host;
+            var siteHost = new Uri(DownloaderOptions.BaseUrl).Host;
             FilterCookiesForSite(cookiePath, siteHost);
             if (HasCookiesForHost(cookiePath, siteHost))
                 return CookieExportResult.Ok(browser, cookiePath);
@@ -172,13 +170,10 @@ public sealed class YtDlpBrowserCookieExporter(
             """;
     }
 
-    public static string GetPermissionHelp()
-    {
-        if (!OperatingSystem.IsMacOS())
-            return AppText.T("cookies.permissionHelpOther");
-
-        return AppText.T("cookies.permissionHelpMac");
-    }
+    public static string GetPermissionHelp() =>
+        OperatingSystem.IsMacOS()
+            ? AppText.T("cookies.permissionHelpMac")
+            : AppText.T("cookies.permissionHelpOther");
 
     private static string Shorten(string value)
     {

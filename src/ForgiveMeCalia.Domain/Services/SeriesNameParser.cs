@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace ForgiveMeCalia.Domain.Services;
@@ -6,7 +7,7 @@ public static partial class SeriesNameParser
 {
     private static readonly (Regex Pattern, Func<Match, int?> PartResolver)[] Rules =
     [
-        (PartNumberSuffix(), m => int.Parse(m.Groups["part"].Value)),
+        (PartNumberSuffix(), m => int.Parse(m.Groups["part"].Value, CultureInfo.InvariantCulture)),
         (PartWordSuffix(), m => WordToNumber(m.Groups["part"].Value)),
         (PartRomanSuffix(), m => RomanToNumber(m.Groups["part"].Value))
     ];
@@ -40,14 +41,12 @@ public static partial class SeriesNameParser
         string.Join(' ', slug.Split('-', StringSplitOptions.RemoveEmptyEntries));
 
     private static string NormalizeKey(string value) =>
-        Regex.Replace(value.ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
+        NonKeyCharacters().Replace(value.ToLowerInvariant(), "-").Trim('-');
 
     public static string SanitizeFolderName(string value)
     {
         var invalid = Path.GetInvalidFileNameChars();
-        var sanitized = new string(value
-            .Select(ch => invalid.Contains(ch) ? '_' : ch)
-            .ToArray())
+        var sanitized = new string([.. value.Select(ch => invalid.Contains(ch) ? '_' : ch)])
             .Trim();
 
         return string.IsNullOrWhiteSpace(sanitized) ? "untitled" : sanitized;
@@ -99,6 +98,8 @@ public static partial class SeriesNameParser
 
     [GeneratedRegex(@"^(?<base>.+?)[\s\-–—]*part[\s\-–—]*(?<part>i{1,3}|iv|v|vi{0,3}|ix|x)\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex PartRomanSuffix();
+    [GeneratedRegex("[^a-z0-9]+")]
+    private static partial Regex NonKeyCharacters();
 }
 
 public sealed record SeriesParseResult(
@@ -106,8 +107,6 @@ public sealed record SeriesParseResult(
     string FolderName,
     int? PartNumber)
 {
-    public bool IsSeries => SeriesKey is not null && PartNumber is not null;
-
     public static SeriesParseResult Standalone(string folderName) =>
         new(null, folderName, null);
 }

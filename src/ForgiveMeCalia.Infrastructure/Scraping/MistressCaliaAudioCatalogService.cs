@@ -3,23 +3,18 @@ using ForgiveMeCalia.Application.Options;
 using ForgiveMeCalia.Domain.Entities;
 using ForgiveMeCalia.Domain.Enums;
 using ForgiveMeCalia.Infrastructure.Http;
-using Microsoft.Extensions.Options;
 
 namespace ForgiveMeCalia.Infrastructure.Scraping;
 
 public sealed class MistressCaliaAudioCatalogService(
-    MistressCaliaSiteClient siteClient,
-    WordPressPostParser parser,
-    IOptions<DownloaderOptions> options) : IAudioCatalogService
+    MistressCaliaSiteClient siteClient) : IAudioCatalogService
 {
-    private readonly DownloaderOptions _options = options.Value;
-
     public async Task<IReadOnlyList<string>> GetPostUrlsAsync(AudioTier tier, CancellationToken cancellationToken)
     {
         var categoryPath = tier switch
         {
-            AudioTier.Free => _options.FreeCategoryPath,
-            AudioTier.Paid => _options.PaidCategoryPath,
+            AudioTier.Free => DownloaderOptions.FreeCategoryPath,
+            AudioTier.Paid => DownloaderOptions.PaidCategoryPath,
             _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, null)
         };
 
@@ -38,29 +33,29 @@ public sealed class MistressCaliaAudioCatalogService(
                 continue;
 
             var html = await siteClient.GetStringAsync(pagePath, cancellationToken);
-            var pagePosts = parser.ParseCategoryPostUrls(html, baseUri);
+            var pagePosts = WordPressPostParser.ParseCategoryPostUrls(html, baseUri);
             foreach (var postUrl in pagePosts)
                 discoveredPosts.Add(postUrl);
 
-            foreach (var nextPage in parser.ParsePaginationPaths(html, categoryBase))
+            foreach (var nextPage in WordPressPostParser.ParsePaginationPaths(html, categoryBase))
             {
                 var normalized = NormalizePath(nextPage);
                 if (!visitedPages.Contains(normalized))
                     pagesToVisit.Enqueue(normalized);
             }
 
-            if (_options.CatalogRequestDelayMs > 0 && pagesToVisit.Count > 0)
-                await Task.Delay(_options.CatalogRequestDelayMs, cancellationToken);
+            if (DownloaderOptions.CatalogRequestDelayMs > 0 && pagesToVisit.Count > 0)
+                await Task.Delay(DownloaderOptions.CatalogRequestDelayMs, cancellationToken);
         }
 
-        return discoveredPosts.OrderBy(u => u, StringComparer.OrdinalIgnoreCase).ToList();
+        return [.. discoveredPosts.OrderBy(u => u, StringComparer.OrdinalIgnoreCase)];
     }
 
     public async Task<AudioPost> GetPostDetailsAsync(string postUrl, AudioTier tier, CancellationToken cancellationToken)
     {
         var path = new Uri(postUrl).AbsolutePath;
         var html = await siteClient.GetStringAsync(path, cancellationToken);
-        return parser.Parse(postUrl, tier, html);
+        return WordPressPostParser.Parse(postUrl, tier, html);
     }
 
     private static string NormalizePath(string path)

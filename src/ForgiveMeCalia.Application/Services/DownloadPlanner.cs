@@ -15,15 +15,9 @@ public sealed class DownloadPlanner(ILibraryPathProvider libraryPaths)
 
         foreach (var tierGroup in tierGroups)
         {
-            var tierFolder = tierGroup.Key switch
-            {
-                AudioTier.Free => "Free",
-                AudioTier.Paid => "Paid",
-                _ => throw new ArgumentOutOfRangeException()
-            };
-
+            var tierFolder = GetTierFolderName(tierGroup.Key);
             var tierRoot = libraryPaths.GetTierRoot(tierFolder);
-            var seriesAssignments = AssignSeriesFolders(tierGroup.ToList());
+            var seriesAssignments = AssignSeriesFolders([.. tierGroup]);
 
             foreach (var post in tierGroup)
             {
@@ -45,11 +39,10 @@ public sealed class DownloadPlanner(ILibraryPathProvider libraryPaths)
             }
         }
 
-        return plan
+        return [.. plan
             .OrderBy(p => p.Tier)
             .ThenBy(p => p.DestinationDirectory, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(p => p.Post.SeriesPartNumber ?? 0)
-            .ToList();
+            .ThenBy(p => p.Post.SeriesPartNumber ?? 0)];
     }
 
     private static Dictionary<AudioPost, string> AssignSeriesFolders(IReadOnlyList<AudioPost> posts)
@@ -76,17 +69,12 @@ public sealed class DownloadPlanner(ILibraryPathProvider libraryPaths)
         return result;
     }
 
-    public (string Directory, string FileName) GetDestination(
+    private (string Directory, string FileName) GetDestination(
         AudioPost post,
         string? tierRoot = null,
         Dictionary<AudioPost, string>? seriesAssignments = null)
     {
-        tierRoot ??= libraryPaths.GetTierRoot(post.Tier switch
-        {
-            AudioTier.Free => "Free",
-            AudioTier.Paid => "Paid",
-            _ => throw new ArgumentOutOfRangeException()
-        });
+        tierRoot ??= libraryPaths.GetTierRoot(GetTierFolderName(post.Tier));
 
         seriesAssignments ??= AssignSeriesFolders([post]);
         var folderName = seriesAssignments[post];
@@ -102,17 +90,26 @@ public sealed class DownloadPlanner(ILibraryPathProvider libraryPaths)
 
         seriesAssignments ??= AssignSeriesFolders([post]);
 
-        var roots = post.Tier switch
-        {
-            AudioTier.Free => new[] { "Free", "free" },
-            AudioTier.Paid => new[] { "Paid", "paid" },
-            _ => throw new ArgumentOutOfRangeException()
-        };
+        var roots = GetCompatibleTierFolderNames(post.Tier);
 
         return roots
             .Select(root => GetDestination(post, libraryPaths.GetTierRoot(root), seriesAssignments))
             .Any(destination => File.Exists(Path.Combine(destination.Directory, destination.FileName)));
     }
+
+    private static string GetTierFolderName(AudioTier tier) => tier switch
+    {
+        AudioTier.Free => "Free",
+        AudioTier.Paid => "Paid",
+        _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, null)
+    };
+
+    private static string[] GetCompatibleTierFolderNames(AudioTier tier) => tier switch
+    {
+        AudioTier.Free => ["Free", "free"],
+        AudioTier.Paid => ["Paid", "paid"],
+        _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, null)
+    };
 
     private static string BuildFileName(AudioPost post)
     {
@@ -124,7 +121,7 @@ public sealed class DownloadPlanner(ILibraryPathProvider libraryPaths)
             extension = ".mp3";
 
         var baseName = SeriesNameParser.SanitizeFolderName(post.Title);
-        if (post.SeriesPartNumber is int part)
+        if (post.SeriesPartNumber is { } part)
             return $"{baseName} (Part {part}){extension}";
 
         return $"{baseName}{extension}";

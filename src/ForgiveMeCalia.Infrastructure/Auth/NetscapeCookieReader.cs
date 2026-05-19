@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 
 namespace ForgiveMeCalia.Infrastructure.Auth;
@@ -19,7 +20,7 @@ public static class NetscapeCookieReader
             var domain = parts[0];
             var path = parts[2];
             var secure = parts[3].Equals("TRUE", StringComparison.OrdinalIgnoreCase);
-            var expires = long.Parse(parts[4]);
+            var expires = long.Parse(parts[4], CultureInfo.InvariantCulture);
             var name = parts[5];
             var value = parts[6];
 

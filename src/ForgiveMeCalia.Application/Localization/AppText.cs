@@ -1,14 +1,10 @@
+using System.Globalization;
+
 namespace ForgiveMeCalia.Application.Localization;
 
 public static class AppText
 {
-    private static AppLanguage _currentLanguage = AppLanguage.English;
-
-    public static AppLanguage CurrentLanguage
-    {
-        get => _currentLanguage;
-        set => _currentLanguage = value;
-    }
+    public static AppLanguage CurrentLanguage { get; set; } = AppLanguage.English;
 
     public static IReadOnlyList<AppLanguage> SupportedLanguages =>
     [
@@ -37,11 +33,11 @@ public static class AppText
                     ?? TryGet(AppLanguage.English, key)
                     ?? key;
 
-        return args.Length == 0 ? value : string.Format(value, args);
+        return args.Length == 0 ? value : string.Format(CultureInfo.InvariantCulture, value, args);
     }
 
     private static string? TryGet(AppLanguage language, string key) =>
-        Translations.TryGetValue((language, key), out var value) ? value : null;
+        Translations.GetValueOrDefault((language, key));
 
     private static readonly Dictionary<(AppLanguage Language, string Key), string> Translations = new()
     {
@@ -703,6 +699,6 @@ public static class AppText
         [(AppLanguage.Uzbek, "cookies.fileMissing")] = "Cookie fayli topilmadi: {0}\n\nMenyuda brauzer cookies importini tanlang yoki ishga tushiring:\n  dotnet run --project src/ForgiveMeCalia.Cli -- cookies import",
         [(AppLanguage.Uzbek, "cookies.fileEmpty")] = "Cookie fayli bo'sh: {0}\nBrauzer cookies ni qayta import qiling.",
         [(AppLanguage.Uzbek, "errors.httpRetry")] = "HTTP qayta urinish istisnosiz muvaffaqiyatsiz tugadi.",
-        [(AppLanguage.Uzbek, "errors.mp3Required")] = "MP3 URL kerak.",
+        [(AppLanguage.Uzbek, "errors.mp3Required")] = "MP3 URL kerak."
     };
 }

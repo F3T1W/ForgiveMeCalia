@@ -1,8 +1,7 @@
 using System.Collections.Concurrent;
 using ForgiveMeCalia.Application.Abstractions;
-using ForgiveMeCalia.Application.Options;
-using ForgiveMeCalia.Application.Downloads;
 using ForgiveMeCalia.Application.Localization;
+using ForgiveMeCalia.Application.Options;
 using ForgiveMeCalia.Application.Services;
 using ForgiveMeCalia.Domain.Entities;
 using ForgiveMeCalia.Domain.Enums;
@@ -64,7 +63,7 @@ public sealed class DownloadAudioCommandHandler(
                 if (File.Exists(destinationPath))
                 {
                     await indexStore.MarkCompletedAsync(item.Post.Mp3Url!, token);
-                    progress.ReportSkipped(AppText.T("download.fileExists"), item.Post.Title);
+                    progress.ReportSkipped();
                     Interlocked.Increment(ref skipped);
                     return;
                 }
@@ -93,7 +92,7 @@ public sealed class DownloadAudioCommandHandler(
 
         await WriteTagsFilesAsync(folderTags, cancellationToken);
 
-        var summary = DownloadSummary.Create(posts.Count, downloaded, skipped, locked, failures.ToList());
+        var summary = DownloadSummary.Create(posts.Count, downloaded, skipped, locked, [.. failures]);
         progress.ReportSummary(summary);
         return summary;
     }
@@ -130,8 +129,8 @@ public sealed class DownloadAudioCommandHandler(
                         AppText.T("download.readFailed", index, urls.Count, DownloadExceptionFormatter.Format(ex)));
                 }
 
-                if (options.Value.CatalogRequestDelayMs > 0 && index < urls.Count)
-                    await Task.Delay(options.Value.CatalogRequestDelayMs, cancellationToken);
+                if (DownloaderOptions.CatalogRequestDelayMs > 0 && index < urls.Count)
+                    await Task.Delay(DownloaderOptions.CatalogRequestDelayMs, cancellationToken);
             }
         }
 

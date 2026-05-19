@@ -1,10 +1,9 @@
 using ForgiveMeCalia.Application.Abstractions;
 using ForgiveMeCalia.Application.Options;
-using Microsoft.Extensions.Options;
 
 namespace ForgiveMeCalia.Infrastructure.Paths;
 
-public sealed class LibraryPathProvider(IOptions<DownloaderOptions> options) : ILibraryPathProvider
+public sealed class LibraryPathProvider : ILibraryPathProvider
 {
     public string GetLibraryRoot()
     {
@@ -12,7 +11,7 @@ public sealed class LibraryPathProvider(IOptions<DownloaderOptions> options) : I
         if (string.IsNullOrWhiteSpace(music))
             music = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Music");
 
-        return Path.Combine(music, options.Value.LibraryFolderName);
+        return Path.Combine(music, DownloaderOptions.LibraryFolderName);
     }
 
     public string GetTierRoot(string tierFolderName) =>

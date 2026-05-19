@@ -4,7 +4,6 @@ namespace ForgiveMeCalia.Domain.Entities;
 
 public sealed class AudioPost
 {
-    public required string PostUrl { get; init; }
     public required string Slug { get; init; }
     public required string Title { get; init; }
     public required AudioTier Tier { get; init; }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using ForgiveMeCalia.Application.Abstractions;
 using ForgiveMeCalia.Application.Downloads;
 using ForgiveMeCalia.Application.Downloads.Commands.DownloadAudio;
@@ -229,7 +230,7 @@ internal static class AppActions
             unitIndex++;
         }
 
-        return $"{value:0.##} {units[unitIndex]}";
+        return $"{value.ToString("0.##", CultureInfo.InvariantCulture)} {units[unitIndex]}";
     }
 
     public static async Task CountCatalogAsync(DownloadScope scope)
@@ -250,16 +251,12 @@ internal static class AppActions
         }
     }
 
-    public static DownloadScope ResolveScope(bool isFree, bool isPaid, bool isAll)
-    {
-        if (isAll)
-            return DownloadScope.All;
-        if (isFree && isPaid)
-            return DownloadScope.All;
-        if (isFree)
-            return DownloadScope.Free;
-        if (isPaid)
-            return DownloadScope.Paid;
-        return DownloadScope.None;
-    }
+    public static DownloadScope ResolveScope(bool isFree, bool isPaid, bool isAll) =>
+        isAll || isFree && isPaid
+            ? DownloadScope.All
+            : isFree
+                ? DownloadScope.Free
+                : isPaid
+                    ? DownloadScope.Paid
+                    : DownloadScope.None;
 }

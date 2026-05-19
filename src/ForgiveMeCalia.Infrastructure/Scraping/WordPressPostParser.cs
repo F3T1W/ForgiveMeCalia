@@ -5,11 +5,11 @@ using ForgiveMeCalia.Domain.Services;
 
 namespace ForgiveMeCalia.Infrastructure.Scraping;
 
-public sealed class WordPressPostParser
+public static class WordPressPostParser
 {
     private static readonly HtmlParser Parser = new();
 
-    public AudioPost Parse(string postUrl, AudioTier tier, string html)
+    public static AudioPost Parse(string postUrl, AudioTier tier, string html)
     {
         var document = Parser.ParseDocument(html);
         var slug = new Uri(postUrl).AbsolutePath.Trim('/').Split('/').Last();
@@ -33,10 +33,7 @@ public sealed class WordPressPostParser
 
         var isLocked = html.Contains("patreon-flow", StringComparison.OrdinalIgnoreCase)
                        || html.Contains("patron-only", StringComparison.OrdinalIgnoreCase)
-                       || document.QuerySelector(".patreon-locked-content, .patron-only") is not null;
-
-        if (mp3Links.Count == 0 && document.Body?.InnerHtml.Contains("locked", StringComparison.OrdinalIgnoreCase) == true)
-            isLocked = true;
+                       || document.QuerySelector(".patreon-locked-content, .patron-only") is not null || mp3Links.Count == 0 && document.Body?.InnerHtml.Contains("locked", StringComparison.OrdinalIgnoreCase) == true;
 
         var tags = document.QuerySelectorAll("a[rel='tag']")
             .Select(a => a.TextContent.Trim())
@@ -46,12 +43,8 @@ public sealed class WordPressPostParser
 
         var series = SeriesNameParser.Parse(title, slug);
 
-        static string SlugToTitle(string value) =>
-            string.Join(' ', value.Split('-', StringSplitOptions.RemoveEmptyEntries));
-
         return new AudioPost
         {
-            PostUrl = postUrl,
             Slug = slug,
             Title = title,
             Tier = tier,
@@ -61,9 +54,12 @@ public sealed class WordPressPostParser
             SeriesKey = series.SeriesKey,
             SeriesPartNumber = series.PartNumber
         };
+
+        static string SlugToTitle(string value) =>
+            string.Join(' ', value.Split('-', StringSplitOptions.RemoveEmptyEntries));
     }
 
-    public IReadOnlyList<string> ParseCategoryPostUrls(string html, Uri baseUri)
+    public static IReadOnlyList<string> ParseCategoryPostUrls(string html, Uri baseUri)
     {
         var document = Parser.ParseDocument(html);
         var urls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -88,10 +84,10 @@ public sealed class WordPressPostParser
             urls.Add(uri.GetLeftPart(UriPartial.Path).TrimEnd('/') + "/");
         }
 
-        return urls.OrderBy(u => u, StringComparer.OrdinalIgnoreCase).ToList();
+        return [.. urls.OrderBy(u => u, StringComparer.OrdinalIgnoreCase)];
     }
 
-    public IReadOnlyList<string> ParsePaginationPaths(string html, string categoryBasePath)
+    public static IReadOnlyList<string> ParsePaginationPaths(string html, string categoryBasePath)
     {
         var document = Parser.ParseDocument(html);
         var categoryBase = GetCategoryBasePath(categoryBasePath);
@@ -110,13 +106,13 @@ public sealed class WordPressPostParser
             paths.Add(path);
         }
 
-        return paths.ToList();
+        return [.. paths];
     }
 
     private static string GetCategoryBasePath(string path)
     {
         path = NormalizePath(path);
-        var pageMarker = "/page/";
+        const string pageMarker = "/page/";
         var pageIndex = path.LastIndexOf(pageMarker, StringComparison.OrdinalIgnoreCase);
         return pageIndex < 0 ? path : path[..pageIndex].TrimEnd('/') + "/";
     }
@@ -126,14 +122,13 @@ public sealed class WordPressPostParser
         if (Uri.TryCreate(href, UriKind.Absolute, out var absolute))
             return NormalizePath(absolute.AbsolutePath);
 
-        if (href.StartsWith('/'))
+        if (href[0] == '/')
             return NormalizePath(href);
 
         var baseUri = new Uri($"https://placeholder.local{categoryBase}");
-        if (Uri.TryCreate(baseUri, href, out var relative))
-            return NormalizePath(relative.AbsolutePath);
-
-        return null;
+        return Uri.TryCreate(baseUri, href, out var relative)
+            ? NormalizePath(relative.AbsolutePath)
+            : null;
     }
 
     private static bool IsCategoryPagePath(string categoryBase, string path)
@@ -153,7 +148,7 @@ public sealed class WordPressPostParser
 
     private static string NormalizePath(string path)
     {
-        if (!path.StartsWith('/'))
+        if (path[0] != '/')
             path = "/" + path;
 
         return path.TrimEnd('/') + "/";

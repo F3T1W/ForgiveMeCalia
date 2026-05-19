@@ -24,9 +24,7 @@ internal static class InteractiveMenuRunner
     {
         var parallelCount = 4;
 
-        AnsiConsole.Write(
-            new FigletText("ForgiveMeCalia")
-                .Color(Color.MediumPurple1));
+        WriteHeader();
         AnsiConsole.MarkupLine($"[grey]{Markup.Escape(AppText.T("app.subtitle"))}[/]");
         AnsiConsole.WriteLine();
 
@@ -79,10 +77,12 @@ internal static class InteractiveMenuRunner
                 case MenuChoice.Exit:
                     AnsiConsole.MarkupLine($"[grey]{Markup.Escape(AppText.T("menu.goodbye"))}[/]");
                     return;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(choice), choice, null);
             }
 
             AnsiConsole.WriteLine();
-            if (!AnsiConsole.Confirm($"[cyan]{Markup.Escape(AppText.T("menu.return"))}[/]", true))
+            if (!AnsiConsole.Confirm($"[cyan]{Markup.Escape(AppText.T("menu.return"))}[/]"))
             {
                 AnsiConsole.MarkupLine($"[grey]{Markup.Escape(AppText.T("menu.goodbye"))}[/]");
                 return;
@@ -97,8 +97,7 @@ internal static class InteractiveMenuRunner
     private static async Task RunCookieImportAsync()
     {
         var pickBrowser = AnsiConsole.Confirm(
-            $"[cyan]{Markup.Escape(AppText.T("menu.browserManual"))}[/] [grey]({Markup.Escape(AppText.T("menu.browserAutoHint"))})[/]",
-            false);
+            $"[cyan]{Markup.Escape(AppText.T("menu.browserManual"))}[/] [grey]({Markup.Escape(AppText.T("menu.browserAutoHint"))})[/]");
 
         if (!pickBrowser)
         {
@@ -118,8 +117,7 @@ internal static class InteractiveMenuRunner
     private static async Task RunArchiveCreationAsync()
     {
         var usePassword = AnsiConsole.Confirm(
-            $"[cyan]{Markup.Escape(AppText.T("archive.usePassword"))}[/]",
-            false);
+            $"[cyan]{Markup.Escape(AppText.T("archive.usePassword"))}[/]");
 
         string? password = null;
         if (usePassword)
@@ -143,6 +141,12 @@ internal static class InteractiveMenuRunner
 
         AppText.CurrentLanguage = selected;
         AnsiConsole.MarkupLine($"[green]{Markup.Escape(AppText.T("menu.languageSet", AppText.LanguageName(selected)))}[/]");
+    }
+
+    private static void WriteHeader()
+    {
+        AnsiConsole.Write(new FigletText("ForgiveMe").Color(Color.MediumPurple1));
+        AnsiConsole.Write(new FigletText("Calia").Color(Color.MediumPurple1));
     }
 
     private static string DescribeChoice(MenuChoice choice) => choice switch

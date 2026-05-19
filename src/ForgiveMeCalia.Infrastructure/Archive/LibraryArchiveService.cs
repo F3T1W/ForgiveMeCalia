@@ -1,3 +1,4 @@
+using System.Globalization;
 using ForgiveMeCalia.Application.Abstractions;
 using ForgiveMeCalia.Application.Localization;
 using ICSharpCode.SharpZipLib.Zip;
@@ -99,7 +100,7 @@ public sealed class LibraryArchiveService(ILibraryPathProvider libraryPaths) : I
 
     private static string GetAvailableArchivePath(string libraryRoot)
     {
-        var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
         var baseName = $"MistressCalia-{timestamp}";
         var archivePath = Path.Combine(libraryRoot, $"{baseName}.zip");
 

@@ -10,21 +10,18 @@ using ForgiveMeCalia.Infrastructure.Persistence;
 using ForgiveMeCalia.Infrastructure.Paths;
 using ForgiveMeCalia.Infrastructure.Scraping;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 
 namespace ForgiveMeCalia.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+    public static void AddInfrastructure(this IServiceCollection services)
     {
-        services.AddSingleton<WordPressPostParser>();
         services.AddSingleton<SiteCookieContainer>();
 
-        services.AddHttpClient<MistressCaliaSiteClient>((provider, client) =>
+        services.AddHttpClient<MistressCaliaSiteClient>(client =>
             {
-                var options = provider.GetRequiredService<IOptions<DownloaderOptions>>().Value;
-                client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
+                client.BaseAddress = new Uri(DownloaderOptions.BaseUrl.TrimEnd('/') + "/");
                 client.DefaultRequestHeaders.UserAgent.ParseAdd(
                     "ForgiveMeCalia/1.0 (+personal archival tool)");
             })
@@ -46,8 +43,5 @@ public static class DependencyInjection
         services.AddSingleton<IDownloadIndexStore, JsonDownloadIndexStore>();
         services.AddSingleton<IBrowserCookieExporter, YtDlpBrowserCookieExporter>();
         services.AddSingleton<ICookieSessionService, CookieSessionService>();
-        services.AddSingleton<IAuthenticationProvider, CookieAuthenticationProvider>();
-
-        return services;
     }
 }

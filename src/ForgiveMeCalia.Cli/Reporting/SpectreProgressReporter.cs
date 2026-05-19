@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using ForgiveMeCalia.Application.Abstractions;
 using ForgiveMeCalia.Application.Downloads;
@@ -8,7 +9,7 @@ namespace ForgiveMeCalia.Cli.Reporting;
 
 public sealed class SpectreProgressReporter : IProgressReporter
 {
-    private readonly object _sync = new();
+    private readonly Lock _sync = new();
     private readonly HashSet<string> _completedDownloads = new(StringComparer.Ordinal);
     private int _downloadCompleted;
 
@@ -27,7 +28,7 @@ public sealed class SpectreProgressReporter : IProgressReporter
     {
         lock (_sync)
             AnsiConsole.MarkupLine(
-                $"[grey]{Markup.Escape(AppText.T("progress.discovery"))}[/] [yellow]{current}[/]/[yellow]{total}[/] - {Markup.Escape(Truncate(itemName, 70))}");
+                $"[grey]{Markup.Escape(AppText.T("progress.discovery"))}[/] [yellow]{current.ToString(CultureInfo.InvariantCulture)}[/]/[yellow]{total.ToString(CultureInfo.InvariantCulture)}[/] - {Markup.Escape(Truncate(itemName, 70))}");
     }
 
     public void ReportDownload(int current, int total, string fileName, double fileProgress)
@@ -43,11 +44,11 @@ public sealed class SpectreProgressReporter : IProgressReporter
 
             _downloadCompleted++;
             AnsiConsole.MarkupLine(
-                $"[green]✓[/] [grey]{_downloadCompleted}[/]/[grey]{total}[/] — {Markup.Escape(Truncate(fileName, 70))}");
+                $"[green]✓[/] [grey]{_downloadCompleted.ToString(CultureInfo.InvariantCulture)}[/]/[grey]{total.ToString(CultureInfo.InvariantCulture)}[/] — {Markup.Escape(Truncate(fileName, 70))}");
         }
     }
 
-    public void ReportSkipped(string reason, string itemName)
+    public void ReportSkipped()
     {
         // The summary already reports skipped items, so avoid noisy per-item output.
     }
@@ -76,11 +77,11 @@ public sealed class SpectreProgressReporter : IProgressReporter
             var table = new Table().Border(TableBorder.Rounded);
             table.AddColumn(AppText.T("progress.metric"));
             table.AddColumn(AppText.T("progress.value"));
-            table.AddRow(AppText.T("progress.found"), summary.Discovered.ToString());
-            table.AddRow(AppText.T("progress.downloaded"), summary.Downloaded.ToString());
-            table.AddRow(AppText.T("progress.skipped"), summary.Skipped.ToString());
-            table.AddRow(AppText.T("progress.locked"), summary.Locked.ToString());
-            table.AddRow(AppText.T("progress.errors"), summary.Failed.ToString());
+            table.AddRow(AppText.T("progress.found"), summary.Discovered.ToString(CultureInfo.InvariantCulture));
+            table.AddRow(AppText.T("progress.downloaded"), summary.Downloaded.ToString(CultureInfo.InvariantCulture));
+            table.AddRow(AppText.T("progress.skipped"), summary.Skipped.ToString(CultureInfo.InvariantCulture));
+            table.AddRow(AppText.T("progress.locked"), summary.Locked.ToString(CultureInfo.InvariantCulture));
+            table.AddRow(AppText.T("progress.errors"), summary.Failed.ToString(CultureInfo.InvariantCulture));
             AnsiConsole.Write(table);
 
             if (summary.Failures.Count == 0)
@@ -89,14 +90,18 @@ public sealed class SpectreProgressReporter : IProgressReporter
             var body = new StringBuilder();
             foreach (var failure in summary.Failures)
             {
-                body.AppendLine($"[bold]{Markup.Escape(failure.Title)}[/]");
+                body.Append("[bold]").Append(Markup.Escape(failure.Title)).AppendLine("[/]");
                 body.AppendLine(Markup.Escape(failure.Message));
                 body.AppendLine();
             }
 
             AnsiConsole.Write(new Panel(body.ToString().TrimEnd())
             {
-                Header = new PanelHeader($"{AppText.T("progress.errors")} ({summary.Failures.Count})"),
+                Header = new PanelHeader(string.Concat(
+                    AppText.T("progress.errors"),
+                    " (",
+                    summary.Failures.Count.ToString(CultureInfo.InvariantCulture),
+                    ")")),
                 Border = BoxBorder.Rounded
             });
         }

@@ -3,7 +3,7 @@ using ForgiveMeCalia.Application.Abstractions;
 
 namespace ForgiveMeCalia.Infrastructure.Persistence;
 
-public sealed class JsonDownloadIndexStore(ILibraryPathProvider libraryPaths) : IDownloadIndexStore
+public sealed class JsonDownloadIndexStore(ILibraryPathProvider libraryPaths) : IDownloadIndexStore, IDisposable
 {
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -42,9 +42,7 @@ public sealed class JsonDownloadIndexStore(ILibraryPathProvider libraryPaths) : 
         try
         {
             var set = await LoadCompletedSourceUrlsAsync(cancellationToken);
-            var changed = false;
-            foreach (var sourceUrl in sourceUrls)
-                changed |= set.Remove(sourceUrl);
+            var changed = sourceUrls.Aggregate(false, (current, sourceUrl) => set.Remove(sourceUrl) || current);
 
             if (!changed)
                 return;
@@ -66,4 +64,7 @@ public sealed class JsonDownloadIndexStore(ILibraryPathProvider libraryPaths) : 
 
     private string GetIndexPath() =>
         Path.Combine(libraryPaths.GetLibraryRoot(), ".download-index.json");
+
+    public void Dispose() =>
+        _gate.Dispose();
 }

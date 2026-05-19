@@ -1,17 +1,14 @@
-using System.Net;
 using ForgiveMeCalia.Application.Abstractions;
 using ForgiveMeCalia.Application.Localization;
 using ForgiveMeCalia.Application.Options;
 using ForgiveMeCalia.Infrastructure.Http;
-using Microsoft.Extensions.Options;
 
 namespace ForgiveMeCalia.Infrastructure.Auth;
 
 public sealed class CookieSessionService(
     SiteCookieContainer cookieContainer,
     ILibraryPathProvider libraryPaths,
-    IBrowserCookieExporter cookieExporter,
-    IOptions<DownloaderOptions> options) : ICookieSessionService
+    IBrowserCookieExporter cookieExporter) : ICookieSessionService
 {
     public async Task EnsureSessionAsync(bool tryImportIfMissing, CancellationToken cancellationToken)
     {
@@ -36,7 +33,7 @@ public sealed class CookieSessionService(
                 AppText.T("cookies.fileEmpty", cookiePath));
         }
 
-        var siteUri = new Uri(options.Value.BaseUrl);
+        var siteUri = new Uri(DownloaderOptions.BaseUrl);
         foreach (var cookie in cookies)
             cookieContainer.Add(siteUri, cookie);
     }

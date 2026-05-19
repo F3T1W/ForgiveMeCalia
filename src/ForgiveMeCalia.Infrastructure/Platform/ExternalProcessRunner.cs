@@ -22,7 +22,8 @@ internal static class ExternalProcessRunner
         foreach (var argument in arguments)
             psi.ArgumentList.Add(argument);
 
-        using var process = new Process { StartInfo = psi };
+        using var process = new Process();
+        process.StartInfo = psi;
         var stdout = new StringBuilder();
         var stderr = new StringBuilder();
 
