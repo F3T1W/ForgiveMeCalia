@@ -97,6 +97,23 @@ public sealed class DownloadPlanner(ILibraryPathProvider libraryPaths)
             .Any(destination => File.Exists(Path.Combine(destination.Directory, destination.FileName)));
     }
 
+    public string? GetExistingDestinationPath(AudioPost post)
+    {
+        if (post.Mp3Url is null || post.IsLocked)
+            return null;
+
+        var seriesAssignments = AssignSeriesFolders([post]);
+        foreach (var root in GetCompatibleTierFolderNames(post.Tier))
+        {
+            var destination = GetDestination(post, libraryPaths.GetTierRoot(root), seriesAssignments);
+            var path = Path.Combine(destination.Directory, destination.FileName);
+            if (File.Exists(path))
+                return path;
+        }
+
+        return null;
+    }
+
     private static string GetTierFolderName(AudioTier tier) => tier switch
     {
         AudioTier.Free => "Free",

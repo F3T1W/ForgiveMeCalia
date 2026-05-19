@@ -4,7 +4,7 @@ namespace ForgiveMeCalia.Application.Localization;
 
 public static class AppText
 {
-    public static AppLanguage CurrentLanguage { get; set; } = AppLanguage.English;
+    public static AppLanguage CurrentLanguage { get; set; } = DetectSystemLanguage();
 
     public static IReadOnlyList<AppLanguage> SupportedLanguages =>
     [
@@ -38,6 +38,17 @@ public static class AppText
 
     private static string? TryGet(AppLanguage language, string key) =>
         Translations.GetValueOrDefault((language, key));
+
+    private static AppLanguage DetectSystemLanguage() =>
+        CultureInfo.CurrentUICulture.TwoLetterISOLanguageName switch
+        {
+            "ru" => AppLanguage.Russian,
+            "ga" => AppLanguage.Irish,
+            "ko" => AppLanguage.Korean,
+            "ja" => AppLanguage.Japanese,
+            "uz" => AppLanguage.Uzbek,
+            _ => AppLanguage.English
+        };
 
     private static readonly Dictionary<(AppLanguage Language, string Key), string> Translations = new()
     {

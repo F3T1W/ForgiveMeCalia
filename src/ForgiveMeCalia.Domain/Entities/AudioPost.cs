@@ -7,6 +7,7 @@ public sealed class AudioPost
     public required string Slug { get; init; }
     public required string Title { get; init; }
     public required AudioTier Tier { get; init; }
+    public string Description { get; init; } = string.Empty;
     public string? Mp3Url { get; init; }
     public bool IsLocked { get; init; }
     public IReadOnlyList<string> Tags { get; init; } = [];

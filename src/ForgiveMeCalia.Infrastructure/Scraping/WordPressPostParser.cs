@@ -1,3 +1,4 @@
+using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 using ForgiveMeCalia.Domain.Entities;
 using ForgiveMeCalia.Domain.Enums;
@@ -41,6 +42,7 @@ public static class WordPressPostParser
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        var description = ExtractDescription(document);
         var series = SeriesNameParser.Parse(title, slug);
 
         return new AudioPost
@@ -48,6 +50,7 @@ public static class WordPressPostParser
             Slug = slug,
             Title = title,
             Tier = tier,
+            Description = description,
             Mp3Url = mp3Links.FirstOrDefault(),
             IsLocked = isLocked && mp3Links.Count == 0,
             Tags = tags,
@@ -58,6 +61,25 @@ public static class WordPressPostParser
         static string SlugToTitle(string value) =>
             string.Join(' ', value.Split('-', StringSplitOptions.RemoveEmptyEntries));
     }
+
+    private static string ExtractDescription(IDocument document)
+    {
+        var content = document.QuerySelector(".wp-block-post-content, .entry-content, article .entry-content, article");
+        if (content is null)
+            return string.Empty;
+
+        var paragraphs = content.QuerySelectorAll("p")
+            .Select(paragraph => NormalizeText(paragraph.TextContent))
+            .Where(text => !string.IsNullOrWhiteSpace(text))
+            .Where(text => !text.Contains(".mp3", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return paragraphs.Count > 0 ? string.Join(Environment.NewLine + Environment.NewLine, paragraphs) : NormalizeText(content.TextContent);
+    }
+
+    private static string NormalizeText(string value) =>
+        string.Join(' ', value.Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries));
 
     public static IReadOnlyList<string> ParseCategoryPostUrls(string html, Uri baseUri)
     {

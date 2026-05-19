@@ -33,6 +33,7 @@ public sealed class DownloadAudioCommandHandler(
         var locked = posts.Count(p => p.IsLocked || p.Mp3Url is null);
         var plan = planner.BuildPlan(posts);
         var alreadyOnDisk = posts.Count - plan.Count - locked;
+        await WriteMetadataForExistingFilesAsync(posts, plan, cancellationToken);
 
         progress.ReportPhase(
             AppText.T("download.queue", plan.Count, alreadyOnDisk, locked));
@@ -40,7 +41,6 @@ public sealed class DownloadAudioCommandHandler(
         var downloaded = 0;
         var skipped = posts.Count - plan.Count - locked;
         var failures = new ConcurrentBag<DownloadFailure>();
-        var folderTags = new ConcurrentDictionary<string, ConcurrentDictionary<string, byte>>(StringComparer.OrdinalIgnoreCase);
 
         if (plan.Count > 0)
             progress.ReportPhase(AppText.T("download.downloading", plan.Count, options.Value.MaxParallelDownloads));
@@ -63,6 +63,7 @@ public sealed class DownloadAudioCommandHandler(
                 if (File.Exists(destinationPath))
                 {
                     await indexStore.MarkCompletedAsync(item.Post.Mp3Url!, token);
+                    await WriteMetadataFileAsync(destinationPath, item.Post, token);
                     progress.ReportSkipped();
                     Interlocked.Increment(ref skipped);
                     return;
@@ -73,12 +74,7 @@ public sealed class DownloadAudioCommandHandler(
 
                 await fileDownloader.DownloadAsync(new Uri(item.Post.Mp3Url!), destinationPath, fileProgress, token);
                 await indexStore.MarkCompletedAsync(item.Post.Mp3Url!, token);
-
-                var tagBag = folderTags.GetOrAdd(
-                    item.DestinationDirectory,
-                    _ => new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase));
-                foreach (var tag in item.Post.Tags)
-                    tagBag.TryAdd(tag, 0);
+                await WriteMetadataFileAsync(destinationPath, item.Post, token);
 
                 Interlocked.Increment(ref downloaded);
             }
@@ -89,8 +85,6 @@ public sealed class DownloadAudioCommandHandler(
                 progress.ReportError(AppText.T("download.failed", item.Post.Title), ex);
             }
         });
-
-        await WriteTagsFilesAsync(folderTags, cancellationToken);
 
         var summary = DownloadSummary.Create(posts.Count, downloaded, skipped, locked, [.. failures]);
         progress.ReportSummary(summary);
@@ -157,22 +151,50 @@ public sealed class DownloadAudioCommandHandler(
             await indexStore.RemoveCompletedAsync(staleUrls, cancellationToken);
     }
 
-    private static async Task WriteTagsFilesAsync(
-        ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> folderTags,
+    private async Task WriteMetadataForExistingFilesAsync(
+        IReadOnlyList<AudioPost> posts,
+        IReadOnlyList<DownloadPlanItem> plan,
         CancellationToken cancellationToken)
     {
-        foreach (var (folder, tags) in folderTags)
+        var plannedPosts = plan.Select(item => item.Post).ToHashSet();
+        foreach (var post in posts)
         {
-            var tagsPath = Path.Combine(folder, "tags.txt");
-            var existing = File.Exists(tagsPath)
-                ? (await File.ReadAllLinesAsync(tagsPath, cancellationToken)).ToHashSet(StringComparer.OrdinalIgnoreCase)
-                : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (plannedPosts.Contains(post))
+                continue;
 
-            foreach (var tag in tags.Keys)
-                existing.Add(tag);
-
-            var lines = existing.OrderBy(t => t, StringComparer.OrdinalIgnoreCase).ToArray();
-            await File.WriteAllLinesAsync(tagsPath, lines, cancellationToken);
+            var destinationPath = planner.GetExistingDestinationPath(post);
+            if (destinationPath is not null)
+                await WriteMetadataFileAsync(destinationPath, post, cancellationToken);
         }
+    }
+
+    private static async Task WriteMetadataFileAsync(
+        string audioPath,
+        AudioPost post,
+        CancellationToken cancellationToken)
+    {
+        var metadataPath = Path.ChangeExtension(audioPath, ".txt");
+        var lines = new List<string>
+        {
+            post.Title,
+            string.Empty,
+            "Description:",
+            string.IsNullOrWhiteSpace(post.Description) ? "(no description found)" : post.Description.Trim(),
+            string.Empty,
+            "Tags:"
+        };
+
+        if (post.Tags.Count == 0)
+        {
+            lines.Add("(none)");
+        }
+        else
+        {
+            lines.AddRange(post.Tags
+                .OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase)
+                .Select(tag => "- " + tag));
+        }
+
+        await File.WriteAllLinesAsync(metadataPath, lines, cancellationToken);
     }
 }
